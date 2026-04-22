@@ -1,0 +1,385 @@
+// ignore_for_file: sort_child_properties_last, unused_field, prefer_final_fields
+
+import 'package:flutter/material.dart';
+import 'package:flutter_project/views/create_account_ui.dart';
+import 'package:flutter_project/views/home_ui.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class LoginUi extends StatefulWidget {
+  const LoginUi({super.key});
+
+  @override
+  State<LoginUi> createState() => _LoginUiState();
+}
+
+class _LoginUiState extends State<LoginUi> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _rememberMe = false;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'กรุณากรอกอีเมลและรหัสผ่าน';
+      });
+      return;
+    }
+
+    try {
+      final authResponse = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      if (!mounted) return;
+      if (authResponse.session == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'ยังไม่ยืนยันอีเมล กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ';
+        });
+        return;
+      }
+      setState(() => _isLoading = false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeUi()),
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.message.contains('Email not confirmed')
+            ? 'ยังไม่ยืนยันอีเมล กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ'
+            : error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // พื้นหลังโทนสีของหน้า Login
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentGeometry.topLeft,
+            end: AlignmentGeometry.bottomRight,
+            colors: [
+              Color(0xFFF5C6CB),
+              Color(0xFFF8D7DA),
+              Color(0xFFFFF0F3),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              // โลโก้และหัวข้อหน้า
+              SizedBox(
+                height: 50,
+              ),
+              //logo
+              Image.asset(
+                'assets/images/Le.png',
+                width: 220,
+                height: 200,
+                fit: BoxFit.cover,
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Text(
+                'เข้าสู่ระบบ',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color.fromARGB(255, 127, 55, 97)),
+              ),
+              SizedBox(
+                height: 50,
+              ),
+              // กล่องฟอร์ม Login
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.5),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ช่องกรอกอีเมล
+                    Text(
+                      'อีเมล',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'กรุณากรอกอีเมล',
+                        hintStyle: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 15,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.email,
+                          color: Colors.grey.shade500,
+                          weight: 20,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade200,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    Text(
+                      'รหัสผ่าน',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'กรุณากรอกรหัสผ่าน',
+                        hintStyle: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 15,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.lock_outlined,
+                          color: Colors.grey.shade500,
+                          weight: 20,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: Colors.grey.shade500,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade200,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                        ),
+                      ),
+                    ),
+                    // ข้อความแจ้งเตือนเมื่อเข้าสู่ระบบไม่สำเร็จ
+                    if (_errorMessage != null) ...[
+                      SizedBox(
+                        height: 10,
+                      ),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                    SizedBox(
+                      height: 20,
+                    ),
+                    // ตัวเลือกจำบัญชี และลืมรหัสผ่าน
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _rememberMe,
+                              onChanged: (value) =>
+                                  setState(() => _rememberMe = value!),
+                              activeColor: Color(0xFFB87B8E),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                            Text(
+                              'Remember me',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () {},
+                          child: Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 25,
+                    ),
+                    // ปุ่มเข้าสู่ระบบและพาไปหน้า Home
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ).copyWith(
+                          backgroundColor: WidgetStatePropertyAll(
+                            Colors.transparent,
+                          ),
+                          shadowColor: WidgetStatePropertyAll(
+                            Colors.transparent,
+                          ),
+                        ),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF8B5E6B),
+                                Color(0xFFB87B8E),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Center(
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text(
+                                    'login',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // จบส่วนฟอร์ม Login
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 70,
+              ),
+              // ลิงก์ไปหน้าสมัครสมาชิก
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Create an account?',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.brown,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 15,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // ไปหน้าสมัครสมาชิก (CreateAccountUi)
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CreateAccountUi(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Sign Up',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.brown,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
