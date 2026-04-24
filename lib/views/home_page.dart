@@ -447,7 +447,7 @@ class _CakeCard extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           cake.name,
-          maxLines: 2,
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 15,
@@ -455,6 +455,19 @@ class _CakeCard extends StatelessWidget {
             height: 1.2,
           ),
         ),
+        if (cake.description.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            cake.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              height: 1.2,
+            ),
+          ),
+        ],
         const SizedBox(height: 6),
         Row(
           children: [
@@ -549,7 +562,7 @@ class _CakeItem {
       id: json['id'],
       name: json['name']?.toString() ?? '',
       price: (json['price'] as num?)?.toInt() ?? 0,
-      imageUrl: json['image_url']?.toString() ?? '',
+      imageUrl: json['imageurl']?.toString() ?? json['image_url']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
     );
   }
