@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomPage extends StatefulWidget {
-  const CustomPage({super.key});
+  final Function(Map<String, dynamic>)? onAddCustomOrder;
+  final VoidCallback? onOpenCart;
+  const CustomPage({super.key, this.onAddCustomOrder, this.onOpenCart});
 
   @override
   State<CustomPage> createState() => _CustomPageState();
 }
 
 class _CustomPageState extends State<CustomPage> {
+  bool _isSaving = false;
+
   // เก็บค่าที่ผู้ใช้เลือก
   int selectedSize = 0; // index ขนาด
   int selectedFlavor = 1; // index รส
@@ -29,6 +34,8 @@ class _CustomPageState extends State<CustomPage> {
     Colors.brown.shade200,
   ];
 
+  List<String> colorNames = ["ชมพูอ่อน", "เหลืองอ่อน", "ส้มอ่อน", "ชมพูเข้ม", "น้ำตาลอ่อน"];
+
   // 🔥 ฟังก์ชันคำนวณราคา
   // -----------------------------
   int calculatePrice() {
@@ -46,6 +53,39 @@ class _CustomPageState extends State<CustomPage> {
 
   //คือการ สร้างตัวควบคุม (controller) สำหรับ TextField เพื่อใช้ “เก็บและจัดการข้อความที่ผู้ใช้พิมพ์”
   TextEditingController messageCtrl = TextEditingController();
+
+  Future<void> _saveCustomOrder() async {
+    if (widget.onAddCustomOrder != null) {
+      widget.onAddCustomOrder!({
+        'size': sizes[selectedSize],
+        'flavor': flavors[selectedFlavor],
+        'color_index': selectedColor,
+        'color_name': colorNames[selectedColor],
+        'message': messageCtrl.text,
+        'is_fruit': isFruit,
+        'is_chocolate': isChocolate,
+        'price': calculatePrice(),
+        'id': DateTime.now().millisecondsSinceEpoch,
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('เพิ่มลงตะกร้าเรียบร้อยแล้ว')),
+      );
+
+      setState(() {
+        selectedSize = 0;
+        selectedFlavor = 1;
+        selectedColor = 0;
+        isChocolate = true;
+        isFruit = false;
+        messageCtrl.clear();
+      });
+
+      if (widget.onOpenCart != null) {
+        widget.onOpenCart!();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +386,7 @@ class _CustomPageState extends State<CustomPage> {
 
               /// 🛒 BUTTON
               ElevatedButton(
-                onPressed: () {},
+                onPressed: _isSaving ? null : _saveCustomOrder,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF7B5E57),
                   padding: EdgeInsets.symmetric(
@@ -358,24 +398,33 @@ class _CustomPageState extends State<CustomPage> {
                   ),
                   elevation: 0,
                 ),
-                child: Row(
-                  children: [
-                    Text(
-                      "เพิ่มลง\nตะกร้า",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        height: 1.3,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          Text(
+                            "เพิ่มลง\nตะกร้า",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              height: 1.3,
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Icon(
+                            Icons.arrow_forward,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ],
                       ),
-                    ),
-                    SizedBox(width: 10),
-                    Icon(
-                      Icons.arrow_forward,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

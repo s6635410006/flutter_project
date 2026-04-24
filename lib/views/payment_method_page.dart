@@ -41,24 +41,14 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
               ),
             ),
             const SizedBox(height: 20),
-            _buildPaymentOption(
-              index: 0,
-              title: "Credit / Debit Card",
-              subtitle: "**** **** **** 1234",
-              icon: Icons.credit_card,
-            ),
+            
             _buildPaymentOption(
               index: 1,
               title: "PromptPay",
               subtitle: "ผูกกับเบอร์โทรศัพท์",
               icon: Icons.qr_code,
             ),
-            _buildPaymentOption(
-              index: 2,
-              title: "TrueMoney Wallet",
-              subtitle: "089-xxx-xxxx",
-              icon: Icons.account_balance_wallet,
-            ),
+            
             const Spacer(),
             SizedBox(
               width: double.infinity,

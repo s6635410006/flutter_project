@@ -14,6 +14,19 @@ class HomeUi extends StatefulWidget {
 class _HomeUiState extends State<HomeUi> {
   int currentIndex = 0; // เก็บ index ของ tab ปัจจุบัน
   final List<CartItemData> _cartItems = [];
+  final List<Map<String, dynamic>> _customOrders = [];
+
+  void _addCustomOrder(Map<String, dynamic> order) {
+    setState(() {
+      _customOrders.add(order);
+    });
+  }
+
+  void _removeCustomOrder(int id) {
+    setState(() {
+      _customOrders.removeWhere((order) => order['id'] == id);
+    });
+  }
 
   void _openCartTab() {
     setState(() {
@@ -46,8 +59,15 @@ class _HomeUiState extends State<HomeUi> {
         onOrderCake: _addToCart,
         onOpenCart: _openCartTab,
       ), // หน้า Home
-      const CustomPage(), // หน้า Custom Cake
-      CartPage(cartItems: _cartItems), // หน้า Cart
+      CustomPage(
+        onAddCustomOrder: _addCustomOrder,
+        onOpenCart: _openCartTab,
+      ), // หน้า Custom Cake
+      CartPage(
+        cartItems: _cartItems,
+        customOrders: _customOrders,
+        onRemoveCustomOrder: _removeCustomOrder,
+      ), // หน้า Cart
       const ProfilePage(), // หน้า Profile
     ];
 

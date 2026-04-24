@@ -7,12 +7,14 @@ import 'package:flutter_project/views/cart_page.dart';
 class QrPaymentPage extends StatefulWidget {
   final int totalAmount;
   final List<CartItemData> cartItems;
+  final List<Map<String, dynamic>> customOrders;
   final Map<String, dynamic> address;
 
   const QrPaymentPage({
     super.key, 
     required this.totalAmount,
     required this.cartItems,
+    this.customOrders = const [],
     required this.address,
   });
 
@@ -179,9 +181,18 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
       final addr = widget.address;
       final addressText = "${addr['name']} โทร: ${addr['phone']}\n${addr['address']} จ.${addr['province']} ${addr['postalcode']}";
       
-      final itemsText = widget.cartItems
-          .map((item) => "${item.name} x${item.quantity}")
-          .join(", ");
+      final itemsText = [
+        ...widget.cartItems.map((item) => "${item.name} x${item.quantity}"),
+        ...widget.customOrders.map((order) {
+           List<String> toppings = [];
+           if (order['is_fruit'] == true) toppings.add('ผลไม้');
+           if (order['is_chocolate'] == true) toppings.add('ช็อกโกแลต');
+           String toppingStr = toppings.isNotEmpty ? ', ท็อปปิ้ง: ${toppings.join(' และ ')}' : '';
+           String colorStr = order['color_name'] != null ? ', ฟรอสซิ่ง: ${order['color_name']}' : '';
+           String msg = (order['message'] != null && order['message'].toString().isNotEmpty) ? ', ข้อความ: "${order['message']}"' : '';
+           return "เค้กสั่งทำ (${order['size']}, รส${order['flavor']}$colorStr$toppingStr$msg)";
+        })
+      ].join("\n");
 
       await Supabase.instance.client.from('carts').insert({
         'userid': userId,

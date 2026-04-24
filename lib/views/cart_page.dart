@@ -19,9 +19,16 @@ class CartItemData {
 }
 
 class CartPage extends StatefulWidget {
-  const CartPage({super.key, required this.cartItems});
+  const CartPage({
+    super.key, 
+    required this.cartItems,
+    this.customOrders = const [],
+    this.onRemoveCustomOrder,
+  });
 
   final List<CartItemData> cartItems;
+  final List<Map<String, dynamic>> customOrders;
+  final Function(int)? onRemoveCustomOrder;
 
   @override
   State<CartPage> createState() => _CartPageState();
@@ -62,10 +69,13 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-  int get _subtotal => widget.cartItems
-      .fold(0, (sum, item) => sum + (item.price * item.quantity));
+  int get _subtotal {
+    int regularTotal = widget.cartItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
+    int customTotal = widget.customOrders.fold(0, (sum, item) => sum + ((item['price'] as int?) ?? 0));
+    return regularTotal + customTotal;
+  }
 
-  int get _shipping => widget.cartItems.isEmpty ? 0 : _shippingFee;
+  int get _shipping => (widget.cartItems.isEmpty && widget.customOrders.isEmpty) ? 0 : _shippingFee;
 
   int get _total => _subtotal + _shipping;
 
@@ -107,7 +117,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                   ),
                   Text(
-                    "${widget.cartItems.length} Items",
+                    "${widget.cartItems.length + widget.customOrders.length} Items",
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -119,7 +129,7 @@ class _CartPageState extends State<CartPage> {
 
               const SizedBox(height: 20),
 
-              if (widget.cartItems.isEmpty)
+              if (widget.cartItems.isEmpty && widget.customOrders.isEmpty)
                 Container(
                   width: double.infinity,
                   padding:
@@ -144,7 +154,7 @@ class _CartPageState extends State<CartPage> {
                     ],
                   ),
                 )
-              else
+              else ...[
                 ...widget.cartItems.asMap().entries.map((entry) {
                   final index = entry.key;
                   final item = entry.value;
@@ -169,6 +179,27 @@ class _CartPageState extends State<CartPage> {
                     },
                   );
                 }),
+                
+                if (widget.customOrders.isNotEmpty) ...[
+                  if (widget.cartItems.isNotEmpty)
+                    const SizedBox(height: 20),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Custom Cakes",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ...widget.customOrders.map((order) {
+                    return _customCakeItem(order);
+                  }),
+                ],
+              ],
 
               const SizedBox(height: 28),
 
@@ -294,7 +325,7 @@ class _CartPageState extends State<CartPage> {
                     /// Button
                     GestureDetector(
                       onTap: () {
-                        if (widget.cartItems.isEmpty) return;
+                        if (widget.cartItems.isEmpty && widget.customOrders.isEmpty) return;
                         if (_address == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('กรุณาเพิ่มที่อยู่สำหรับจัดส่ง')),
@@ -307,6 +338,7 @@ class _CartPageState extends State<CartPage> {
                             builder: (context) => QrPaymentPage(
                               totalAmount: _total,
                               cartItems: widget.cartItems,
+                              customOrders: widget.customOrders,
                               address: _address!,
                             ),
                           ),
@@ -345,6 +377,74 @@ class _CartPageState extends State<CartPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// =========================
+  /// 🎂 Custom Cake Item
+  /// =========================
+  Widget _customCakeItem(Map<String, dynamic> order) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Custom Design Cake",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Row(
+                children: [
+                  Text(
+                    _formatCurrency(order['price'] ?? 0),
+                    style: const TextStyle(
+                      color: Colors.brown,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () {
+                      if (widget.onRemoveCustomOrder != null) {
+                        widget.onRemoveCustomOrder!(order['id']);
+                      }
+                    },
+                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const Divider(),
+          _customCakeDetailRow("Size", order['size']),
+          _customCakeDetailRow("Flavor", order['flavor']),
+          _customCakeDetailRow("Color", order['color_name'] ?? 'ไม่มี'),
+          _customCakeDetailRow("Message", order['message']?.isEmpty ?? true ? "-" : order['message']),
+          if (order['is_fruit'] == true) _customCakeDetailRow("Topping", "Fruit (+฿20)"),
+          if (order['is_chocolate'] == true) _customCakeDetailRow("Topping", "Chocolate (+฿30)"),
+        ],
+      ),
+    );
+  }
+
+  Widget _customCakeDetailRow(String title, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text("$title: ", style: const TextStyle(color: Colors.grey)),
+          Text(value.toString(), style: const TextStyle(fontWeight: FontWeight.w500)),
+        ],
       ),
     );
   }

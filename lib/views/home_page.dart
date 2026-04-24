@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage(
@@ -17,46 +18,14 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-// ข้อมูลหมวดหมู่ที่แสดงในแถวไอคอนแนวนอน
-final List<_CategoryItem> _categories = [
-  _CategoryItem(icon: Icons.cake, label: 'เค้กวันเกิด', active: true),
-  _CategoryItem(icon: Icons.favorite, label: 'เค้กแต่งงาน'),
-  _CategoryItem(icon: Icons.delivery_dining, label: 'เค้กการ์ตูน'),
-  _CategoryItem(icon: Icons.palette, label: 'เค้กดีไซน์พิเศษ'),
-  _CategoryItem(icon: Icons.more_horiz, label: 'อื่นๆ'),
-];
-
-// ข้อมูลสินค้าเค้กสำหรับแสดงในกริด
-final List<_CakeItem> _cakes = [
-  _CakeItem(
-    name: 'Classic Chocolate\nFudge',
-    price: 850,
-    imageUrl:
-        'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=700',
-  ),
-  _CakeItem(
-    name: 'Minimal Pink Peony',
-    price: 490,
-    imageUrl:
-        'https://images.unsplash.com/photo-1621303837174-89787a7d4729?w=700',
-  ),
-  _CakeItem(
-    name: 'Blue Galaxy\nAdventure',
-    price: 1200,
-    imageUrl:
-        'https://images.unsplash.com/photo-1535141192574-5d4897c12636?w=700',
-  ),
-  _CakeItem(
-    name: 'Ethereal Vanilla\nLace',
-    price: 2500,
-    imageUrl:
-        'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=700',
-  ),
-];
-
 class _HomePageState extends State<HomePage> {
   // เก็บ index ของการ์ดที่ถูกกด favorite
-  final Set<int> _favoriteIndexes = {0, 1, 2, 3};
+  final Set<int> _favoriteIndexes = {};
+
+  List<_CategoryItem> _categories = [];
+  List<_CakeItem> _cakes = [];
+  bool _isLoading = true;
+
   final List<String> _bannerImages = const [
     'assets/images/c1.jpg',
     'assets/images/c2.jpg',
@@ -69,6 +38,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _fetchData();
     _bannerController = PageController();
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!_bannerController.hasClients) return;
@@ -79,6 +49,30 @@ class _HomePageState extends State<HomePage> {
         curve: Curves.easeInOut,
       );
     });
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      final supabase = Supabase.instance.client;
+      
+      final categoryData = await supabase.from('categories').select();
+      final productData = await supabase.from('products').select();
+      
+      if (mounted) {
+        setState(() {
+          _categories = categoryData.map((e) => _CategoryItem.fromJson(e)).toList();
+          _cakes = productData.map((e) => _CakeItem.fromJson(e)).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -114,8 +108,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7A4D60)))
+          : SingleChildScrollView(
+              child: Column(
           children: [
             // ช่องค้นหา
             Padding(
@@ -406,6 +402,22 @@ class _CakeCard extends StatelessWidget {
                   width: double.infinity,
                   height: double.infinity,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey.shade200,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.broken_image, color: Colors.grey, size: 32),
+                          SizedBox(height: 4),
+                          Text(
+                            'No Image',
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
               Positioned(
@@ -486,24 +498,59 @@ class _CakeCard extends StatelessWidget {
 
 class _CategoryItem {
   const _CategoryItem({
+    required this.id,
     required this.icon,
     required this.label,
     this.active = false,
   });
 
+  final dynamic id;
   final IconData icon; // ไอคอนหมวดหมู่
   final String label; // ชื่อหมวดหมู่
   final bool active; // สถานะหมวดหมู่ที่ถูกเลือก
+
+  factory _CategoryItem.fromJson(Map<String, dynamic> json) {
+    IconData getIcon(String code) {
+      switch (code) {
+        case 'cake': return Icons.cake;
+        case 'favorite': return Icons.favorite;
+        case 'delivery_dining': return Icons.delivery_dining;
+        case 'palette': return Icons.palette;
+        default: return Icons.more_horiz;
+      }
+    }
+    
+    return _CategoryItem(
+      id: json['id'],
+      icon: getIcon(json['icon_code']?.toString() ?? ''),
+      label: json['name']?.toString() ?? '',
+      active: json['is_active'] ?? false,
+    );
+  }
 }
 
 class _CakeItem {
   const _CakeItem({
+    required this.id,
     required this.name,
     required this.price,
     required this.imageUrl,
+    this.description = '',
   });
 
+  final dynamic id;
   final String name; // ชื่อสินค้า
   final int price; // ราคาสินค้า
   final String imageUrl; // URL รูปสินค้า
+  final String description; // รายละเอียดสินค้า
+
+  factory _CakeItem.fromJson(Map<String, dynamic> json) {
+    return _CakeItem(
+      id: json['id'],
+      name: json['name']?.toString() ?? '',
+      price: (json['price'] as num?)?.toInt() ?? 0,
+      imageUrl: json['image_url']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+    );
+  }
 }
