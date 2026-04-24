@@ -19,12 +19,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // เก็บ index ของการ์ดที่ถูกกด favorite
-  final Set<int> _favoriteIndexes = {};
+  // เก็บ ID ของการ์ดที่ถูกกด favorite
+  final Set<dynamic> _favoriteIds = {};
 
   List<_CategoryItem> _categories = [];
   List<_CakeItem> _cakes = [];
   bool _isLoading = true;
+  dynamic _selectedCategoryId;
 
   final List<String> _bannerImages = const [
     'assets/images/c1.jpg',
@@ -62,6 +63,9 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _categories = categoryData.map((e) => _CategoryItem.fromJson(e)).toList();
           _cakes = productData.map((e) => _CakeItem.fromJson(e)).toList();
+          if (_categories.isNotEmpty && _selectedCategoryId == null) {
+            _selectedCategoryId = _categories.first.id;
+          }
           _isLoading = false;
         });
       }
@@ -84,6 +88,15 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final displayedCakes = _selectedCategoryId == null 
+        ? _cakes 
+        : _cakes.where((cake) => cake.categoryId?.toString() == _selectedCategoryId?.toString()).toList();
+
+    final selectedCategoryName = _categories
+        .where((c) => c.id?.toString() == _selectedCategoryId?.toString())
+        .map((c) => c.label)
+        .firstOrNull ?? 'เค้กแนะนำสำหรับคุณ';
+
     return Scaffold(
       // โครงหน้าหลักของ Home ตามดีไซน์ตัวอย่าง
       backgroundColor: const Color(0xFFF4F1EB),
@@ -263,8 +276,21 @@ class _HomePageState extends State<HomePage> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemBuilder: (_, index) =>
-                    _CategoryCircle(item: _categories[index]),
+                itemBuilder: (_, index) {
+                  final category = _categories[index];
+                  final isSelected = _selectedCategoryId?.toString() == category.id?.toString();
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategoryId = category.id;
+                      });
+                    },
+                    child: _CategoryCircle(
+                      item: category,
+                      isSelected: isSelected,
+                    ),
+                  );
+                },
                 separatorBuilder: (_, __) => const SizedBox(width: 14),
                 itemCount: _categories.length,
               ),
@@ -276,7 +302,7 @@ class _HomePageState extends State<HomePage> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'เค้กแนะนำสำหรับคุณ',
+                  selectedCategoryName,
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
@@ -289,42 +315,52 @@ class _HomePageState extends State<HomePage> {
             // กริดรายการสินค้าเค้ก 2 คอลัมน์
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: GridView.builder(
-                itemCount: _cakes.length,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.58,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 18,
-                ),
-                itemBuilder: (_, index) {
-                  final cake = _cakes[index];
-                  final isFavorite = _favoriteIndexes.contains(index);
-                  return _CakeCard(
-                    cake: cake,
-                    isFavorite: isFavorite,
-                    onOrderTap: () {
-                      widget.onOrderCake(
-                        name: cake.name,
-                        price: cake.price,
-                        imageUrl: cake.imageUrl,
-                      );
-                      widget.onOpenCart();
-                    },
-                    onFavoriteTap: () {
-                      setState(() {
-                        if (isFavorite) {
-                          _favoriteIndexes.remove(index);
-                        } else {
-                          _favoriteIndexes.add(index);
-                        }
-                      });
-                    },
-                  );
-                },
-              ),
+              child: displayedCakes.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Text(
+                          'ไม่มีสินค้าในหมวดหมู่นี้',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  : GridView.builder(
+                      itemCount: displayedCakes.length,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.58,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 18,
+                      ),
+                      itemBuilder: (_, index) {
+                        final cake = displayedCakes[index];
+                        final isFavorite = _favoriteIds.contains(cake.id);
+                        return _CakeCard(
+                          cake: cake,
+                          isFavorite: isFavorite,
+                          onOrderTap: () {
+                            widget.onOrderCake(
+                              name: cake.name,
+                              price: cake.price,
+                              imageUrl: cake.imageUrl,
+                            );
+                            widget.onOpenCart();
+                          },
+                          onFavoriteTap: () {
+                            setState(() {
+                              if (isFavorite) {
+                                _favoriteIds.remove(cake.id);
+                              } else {
+                                _favoriteIds.add(cake.id);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -334,9 +370,10 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _CategoryCircle extends StatelessWidget {
-  const _CategoryCircle({required this.item});
+  const _CategoryCircle({required this.item, this.isSelected = false});
 
   final _CategoryItem item;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +386,7 @@ class _CategoryCircle extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color:
-                item.active ? const Color(0xFFF7D8E0) : const Color(0xFFEAE7E2),
+                isSelected ? const Color(0xFFF7D8E0) : const Color(0xFFEAE7E2),
           ),
           child: Icon(
             item.icon,
@@ -549,6 +586,7 @@ class _CakeItem {
     required this.price,
     required this.imageUrl,
     this.description = '',
+    this.categoryId,
   });
 
   final dynamic id;
@@ -556,6 +594,7 @@ class _CakeItem {
   final int price; // ราคาสินค้า
   final String imageUrl; // URL รูปสินค้า
   final String description; // รายละเอียดสินค้า
+  final dynamic categoryId; // ไอดีหมวดหมู่
 
   factory _CakeItem.fromJson(Map<String, dynamic> json) {
     return _CakeItem(
@@ -564,6 +603,7 @@ class _CakeItem {
       price: (json['price'] as num?)?.toInt() ?? 0,
       imageUrl: json['imageurl']?.toString() ?? json['image_url']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
+      categoryId: json['categoryid'],
     );
   }
 }
