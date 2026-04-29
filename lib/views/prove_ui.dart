@@ -181,7 +181,7 @@ class _ProveUiState extends State<ProveUi> {
                               TextField(
                                 controller: otpController,
                                 keyboardType: TextInputType.number,
-                                maxLength: 6,
+                                maxLength: 8,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 24,
