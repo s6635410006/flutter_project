@@ -165,10 +165,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F1EF),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F1EF),
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: const AssetImage('assets/images/bg_pattern.png'),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.white.withOpacity(0.85),
+            BlendMode.lighten,
+          ),
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text('Cake Ease', style: TextStyle(color: Colors.brown)),
         centerTitle: true,
@@ -332,6 +343,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

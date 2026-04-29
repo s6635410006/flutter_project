@@ -112,7 +112,7 @@ class _LoginUiState extends State<LoginUi> {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: const AssetImage('assets/images/bg_pattern.jpg'), // อย่าลืมเซฟรูปภาพนี้ไว้ที่ assets/images/bg_pattern.jpg
+            image: const AssetImage('assets/images/bg_pattern.png'), // อย่าลืมเซฟรูปภาพนี้ไว้ที่ assets/images/bg_pattern.png
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
               Colors.white.withOpacity(0.85), // ทำให้ภาพจางลงเพื่อให้ข้อความอ่านง่าย

@@ -139,7 +139,7 @@ class _CreateAccountUiState extends State<CreateAccountUi> {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: const AssetImage('assets/images/bg_pattern.jpg'), // อย่าลืมเซฟรูปภาพนี้ไว้ที่ assets/images/bg_pattern.jpg
+            image: const AssetImage('assets/images/bg_pattern.png'), // อย่าลืมเซฟรูปภาพนี้ไว้ที่ assets/images/bg_pattern.png
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
               Colors.white.withOpacity(0.85),

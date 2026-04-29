@@ -97,11 +97,22 @@ class _HomePageState extends State<HomePage> {
         .map((c) => c.label)
         .firstOrNull ?? 'เค้กแนะนำสำหรับคุณ';
 
-    return Scaffold(
-      // โครงหน้าหลักของ Home ตามดีไซน์ตัวอย่าง
-      backgroundColor: const Color(0xFFF4F1EB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF4F1EB),
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: const AssetImage('assets/images/bg_pattern.png'),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.white.withOpacity(0.85),
+            BlendMode.lighten,
+          ),
+        ),
+      ),
+      child: Scaffold(
+        // โครงหน้าหลักของ Home ตามดีไซน์ตัวอย่าง
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
@@ -365,7 +376,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

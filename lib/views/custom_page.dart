@@ -95,10 +95,21 @@ class _CustomPageState extends State<CustomPage> {
   @override
   Widget build(BuildContext context) {
     int totalPrice = calculatePrice();
-    return Scaffold(
-      backgroundColor: Color(0xFFF5F1EC), // สีพื้นหลังครีม
-      appBar: AppBar(
-        backgroundColor: Color(0xFFF5F1EC),
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: const AssetImage('assets/images/bg_pattern.png'),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.white.withOpacity(0.85),
+            BlendMode.lighten,
+          ),
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // สีพื้นหลังครีม
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           "CAKE EASE",
@@ -435,7 +446,7 @@ class _CustomPageState extends State<CustomPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   // 🔥 สำคัญมาก (เพิ่มเข้ามา) คือ ฟังก์ชันทำความสะอาดหน่วยความจำ (cleanup) ของหน้า Flutter ก่อนที่หน้านั้นจะถูกปิด ❗

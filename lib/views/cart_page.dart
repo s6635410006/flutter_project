@@ -147,10 +147,21 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F1EC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F1EC),
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: const AssetImage('assets/images/bg_pattern.png'),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.white.withOpacity(0.85),
+            BlendMode.lighten,
+          ),
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         title: const Text(
@@ -485,7 +496,7 @@ class _CartPageState extends State<CartPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 
 //------สั่งเค้กเอง---------
