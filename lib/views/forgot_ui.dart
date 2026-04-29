@@ -64,15 +64,14 @@ class _ForgotUiState extends State<ForgotUi> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF5C6CB),
-              Color(0xFFF8D7DA),
-              Color(0xFFFFF0F3),
-            ],
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/bg_pattern.jpg'), // อย่าลืมเซฟรูปภาพนี้ไว้ที่ assets/images/bg_pattern.jpg
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.85),
+              BlendMode.lighten,
+            ),
           ),
         ),
         child: SafeArea(

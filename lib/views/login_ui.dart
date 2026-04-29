@@ -111,14 +111,13 @@ class _LoginUiState extends State<LoginUi> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.fromARGB(255, 245, 204, 208),
-              Color.fromARGB(255, 252, 223, 226),
-              Color.fromARGB(255, 250, 240, 242),
-            ],
+          image: DecorationImage(
+            image: const AssetImage('assets/images/bg_pattern.jpg'), // อย่าลืมเซฟรูปภาพนี้ไว้ที่ assets/images/bg_pattern.jpg
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.85), // ทำให้ภาพจางลงเพื่อให้ข้อความอ่านง่าย
+              BlendMode.lighten,
+            ),
           ),
         ),
         child: Center(
