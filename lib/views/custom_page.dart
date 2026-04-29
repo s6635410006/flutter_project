@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_project/views/home_ui.dart';
+import 'package:flutter_project/views/cart_page.dart';
+import 'package:flutter_project/views/qr_payment_page.dart';
+import 'package:flutter_project/views/profile_page.dart';
+
 
 class CustomPage extends StatefulWidget {
   final Function(Map<String, dynamic>)? onAddCustomOrder;
@@ -96,7 +101,7 @@ class _CustomPageState extends State<CustomPage> {
         backgroundColor: Color(0xFFF5F1EC),
         elevation: 0,
         title: Text(
-          "Sweet Cake",
+          "CAKE EASE",
           style: TextStyle(color: Colors.brown),
         ),
         centerTitle: true,

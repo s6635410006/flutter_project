@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Cake Ease Project",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define", "SUPABASE_URL=https://cpvkivrtdvfiqcctdcvc.supabase.co",
+        "--dart-define", "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwdmtpdnJ0ZHZmaXFjY3RkY3ZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzOTQ3MDMsImV4cCI6MjA5MTk3MDcwM30.ChXo7wWrYa1AgH5OtXDTvwE-UqOqGS8Wg_yjSDvWdO8"
+      ]
+    }
+  ]
+}

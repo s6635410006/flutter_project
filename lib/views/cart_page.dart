@@ -1,6 +1,7 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_project/views/address_page.dart';
 import 'package:flutter_project/views/address_list_page.dart';
 import 'package:flutter_project/views/qr_payment_page.dart';
 
@@ -20,7 +21,7 @@ class CartItemData {
 
 class CartPage extends StatefulWidget {
   const CartPage({
-    super.key, 
+    super.key,
     required this.cartItems,
     this.customOrders = const [],
     this.onRemoveCustomOrder,
@@ -43,6 +44,65 @@ class _CartPageState extends State<CartPage> {
   void initState() {
     super.initState();
     _fetchAddress();
+  }
+
+//-----สร้าง/เพิ่ม order----------
+  Future<void> _createOrder() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    // ตรวจสอบเงื่อนไขก่อนสั่งซื้อ
+    if (user == null || _address == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("กรุณาเลือกที่อยู่จัดส่ง")),
+        );
+      }
+      return;
+    }
+
+    String productNames = "";
+    try {
+      // แก้ไขตาม Error: ใช้ .name เพราะเป็น CartItemData ไม่ใช่ Map
+      productNames = widget.cartItems.map((item) => item.name).join(', ');
+    } catch (e) {
+      return;
+    }
+
+    try {
+
+      // 🚩 ตาราง 'orders' ใช้ 'user_id' (มีขีดล่าง)
+      await Supabase.instance.client.from('orders').insert({
+        'user_id': user.id,
+        'status': 'กำลังเตรียม',
+        'address':
+            '${_address!['address']} ${_address!['province']}\nชื่อผู้รับ: ${_address!['name']} โทร: ${_address!['phone']}',
+        'items': productNames,
+        'total_price': _total,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+
+
+      // 🚩 ตาราง 'carts' ใช้ 'userid' (ไม่มีขีดล่าง) ตามที่ Supabase แนะนำ
+      await Supabase.instance.client
+          .from('carts')
+          .update({'status': 'ordered'}).eq('userid', user.id);
+
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("สั่งซื้อสำเร็จแล้ว!")),
+        );
+
+        // 🚩 ตรงนี้คุณประชาอาจจะใส่ Navigator.pop(context) หรือไปหน้าประวัติสั่งซื้อได้เลย
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("เกิดข้อผิดพลาด: $e")),
+        );
+      }
+    }
   }
 
   Future<void> _fetchAddress() async {
@@ -69,13 +129,19 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
+// ----------ส่ง order-------
+
   int get _subtotal {
-    int regularTotal = widget.cartItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
-    int customTotal = widget.customOrders.fold(0, (sum, item) => sum + ((item['price'] as int?) ?? 0));
+    int regularTotal = widget.cartItems
+        .fold(0, (sum, item) => sum + (item.price * item.quantity));
+    int customTotal = widget.customOrders
+        .fold(0, (sum, item) => sum + ((item['price'] as int?) ?? 0));
     return regularTotal + customTotal;
   }
 
-  int get _shipping => (widget.cartItems.isEmpty && widget.customOrders.isEmpty) ? 0 : _shippingFee;
+  int get _shipping => (widget.cartItems.isEmpty && widget.customOrders.isEmpty)
+      ? 0
+      : _shippingFee;
 
   int get _total => _subtotal + _shipping;
 
@@ -88,7 +154,7 @@ class _CartPageState extends State<CartPage> {
         elevation: 0,
         centerTitle: true,
         title: const Text(
-          "Sweet Cake",
+          "CAKE EASE",
           style: TextStyle(color: Colors.brown),
         ),
         leading: const Icon(Icons.menu, color: Colors.brown),
@@ -179,10 +245,8 @@ class _CartPageState extends State<CartPage> {
                     },
                   );
                 }),
-                
                 if (widget.customOrders.isNotEmpty) ...[
-                  if (widget.cartItems.isNotEmpty)
-                    const SizedBox(height: 20),
+                  if (widget.cartItems.isNotEmpty) const SizedBox(height: 20),
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -217,9 +281,14 @@ class _CartPageState extends State<CartPage> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
-                      BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
+                      BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5)),
                     ],
                   ),
+
+                  //----------ที่อยู่สำหรับจัดส่ง----------
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -232,15 +301,22 @@ class _CartPageState extends State<CartPage> {
                               SizedBox(width: 10),
                               Text(
                                 "ที่อยู่สำหรับจัดส่ง",
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.brown),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.brown),
                               ),
                             ],
                           ),
+
+                          //----------ปุ่มเปลี่ยนที่อยู่----------
                           GestureDetector(
                             onTap: () async {
                               final selectedAddr = await Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const AddressListPage()),
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AddressListPage()),
                               );
                               if (selectedAddr != null) {
                                 setState(() {
@@ -258,55 +334,66 @@ class _CartPageState extends State<CartPage> {
                           )
                         ],
                       ),
-                      const Divider(height: 25),
+
+                      Divider(height: 25),
+                      //----------ข้อมูลที่อยู่จัดส่ง----------
                       Text(
                         "${_address!['name']} | โทร: ${_address!['phone']}",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15),
                       ),
-                      const SizedBox(height: 5),
+                      SizedBox(height: 5),
                       Text(
                         "${_address!['address']} จ.${_address!['province']} ${_address!['postalcode']}",
-                        style: TextStyle(color: Colors.grey.shade600, height: 1.5),
+                        style:
+                            TextStyle(color: Colors.grey.shade600, height: 1.5),
                       ),
                     ],
                   ),
                 )
               else
+
+                //----------ถ้ายังไม่มีที่อยู่จัดส่ง----------
                 Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(20),
+                  margin: EdgeInsets.only(bottom: 20),
+                  padding: EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: const Color(0xFFD8A7B1), width: 1),
+                    border:
+                        Border.all(color: const Color(0xFFD8A7B1), width: 1),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("ยังไม่มีที่อยู่จัดส่ง", style: TextStyle(color: Colors.brown)),
+                      const Text("ยังไม่มีที่อยู่จัดส่ง",
+                          style: TextStyle(color: Colors.brown)),
                       TextButton(
                         onPressed: () async {
                           final selectedAddr = await Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const AddressListPage()),
+                            MaterialPageRoute(
+                                builder: (context) => const AddressListPage()),
                           );
                           if (selectedAddr != null) {
                             setState(() {
                               _address = selectedAddr;
                             });
                           } else {
-                            // If they just added an address but didn't select, fetch default
                             setState(() => _isLoadingAddress = true);
                             _fetchAddress();
                           }
                         },
-                        child: const Text("เพิ่มที่อยู่", style: TextStyle(color: Color(0xFFD8A7B1), fontWeight: FontWeight.bold)),
+                        child: const Text("เพิ่มที่อยู่",
+                            style: TextStyle(
+                                color: Color(0xFFD8A7B1),
+                                fontWeight: FontWeight.bold)),
                       )
                     ],
                   ),
                 ),
 
-              /// Summary Box
+              //----------รายการสินค้าในตะกร้า----------
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -322,27 +409,44 @@ class _CartPageState extends State<CartPage> {
 
                     const SizedBox(height: 20),
 
-                    /// Button
+                    //-----------ปุ่มสั่งซื้อ---------
                     GestureDetector(
-                      onTap: () {
-                        if (widget.cartItems.isEmpty && widget.customOrders.isEmpty) return;
-                        if (_address == null) {
+                      onTap: () async {
+                        // 1. เช็กสินค้าในตะกร้า
+                        if (widget.cartItems.isEmpty &&
+                            widget.customOrders.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('กรุณาเพิ่มที่อยู่สำหรับจัดส่ง')),
+                            const SnackBar(
+                                content: Text('ไม่มีสินค้าในตะกร้า')),
                           );
                           return;
                         }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => QrPaymentPage(
-                              totalAmount: _total,
-                              cartItems: widget.cartItems,
-                              customOrders: widget.customOrders,
-                              address: _address!,
+
+                        // 2. เช็กที่อยู่
+                        if (_address == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('กรุณาเพิ่มที่อยู่สำหรับจัดส่ง')),
+                          );
+                          return;
+                        }
+
+                        await _createOrder();
+
+                        // 3. บันทึกสำเร็จแล้วพาไปหน้าชำระเงิน
+                        if (mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => QrPaymentPage(
+                                totalAmount: _total,
+                                cartItems: widget.cartItems,
+                                customOrders: widget.customOrders,
+                                address: _address!,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                       child: Container(
                         height: 55,
@@ -350,10 +454,13 @@ class _CartPageState extends State<CartPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(30),
                           gradient: const LinearGradient(
-                            colors: [Color(0xFFD8A7B1), Color(0xFFC48A97)],
+                            colors: [
+                              Color(0xFFD8A7B1),
+                              Color.fromARGB(255, 172, 83, 160)
+                            ],
                           ),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             "ดำเนินการสั่งซื้อ →",
                             style: TextStyle(
@@ -368,9 +475,9 @@ class _CartPageState extends State<CartPage> {
                 ),
               ),
 
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
 
-              const Text(
+              Text(
                 "🎟 Have a promo code?",
                 style: TextStyle(color: Colors.grey),
               )
@@ -381,13 +488,11 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  /// =========================
-  /// 🎂 Custom Cake Item
-  /// =========================
+//------สั่งเค้กเอง---------
   Widget _customCakeItem(Map<String, dynamic> order) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 15),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
@@ -398,7 +503,7 @@ class _CartPageState extends State<CartPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 "Custom Design Cake",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
@@ -406,52 +511,55 @@ class _CartPageState extends State<CartPage> {
                 children: [
                   Text(
                     _formatCurrency(order['price'] ?? 0),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.brown,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   GestureDetector(
                     onTap: () {
                       if (widget.onRemoveCustomOrder != null) {
                         widget.onRemoveCustomOrder!(order['id']);
                       }
                     },
-                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                    child:
+                        Icon(Icons.delete_outline, color: Colors.red, size: 20),
                   ),
                 ],
               ),
             ],
           ),
-          const Divider(),
+          Divider(),
           _customCakeDetailRow("Size", order['size']),
           _customCakeDetailRow("Flavor", order['flavor']),
           _customCakeDetailRow("Color", order['color_name'] ?? 'ไม่มี'),
-          _customCakeDetailRow("Message", order['message']?.isEmpty ?? true ? "-" : order['message']),
-          if (order['is_fruit'] == true) _customCakeDetailRow("Topping", "Fruit (+฿20)"),
-          if (order['is_chocolate'] == true) _customCakeDetailRow("Topping", "Chocolate (+฿30)"),
+          _customCakeDetailRow("Message",
+              order['message']?.isEmpty ?? true ? "-" : order['message']),
+          if (order['is_fruit'] == true)
+            _customCakeDetailRow("Topping", "Fruit (+฿20)"),
+          if (order['is_chocolate'] == true)
+            _customCakeDetailRow("Topping", "Chocolate (+฿30)"),
         ],
       ),
     );
   }
 
+//-------ดีเทลสั่งเค้กเอง-------
   Widget _customCakeDetailRow(String title, dynamic value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Text("$title: ", style: const TextStyle(color: Colors.grey)),
-          Text(value.toString(), style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text("$title: ", style: TextStyle(color: Colors.grey)),
+          Text(value.toString(), style: TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  /// =========================
-  /// 🧁 Cart Item Widget
-  /// =========================
+  /// -------ตะกร้า-------
   Widget _cartItem({
     required String name,
     required int price,
@@ -461,8 +569,8 @@ class _CartPageState extends State<CartPage> {
     required VoidCallback onRemove,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.only(bottom: 15),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
@@ -480,7 +588,7 @@ class _CartPageState extends State<CartPage> {
             ),
           ),
 
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
 
           /// Info
           Expanded(
@@ -488,11 +596,11 @@ class _CartPageState extends State<CartPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 6),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                SizedBox(height: 6),
                 Text("ราคา/ชิ้น ${_formatCurrency(price)}",
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: Colors.brown, fontWeight: FontWeight.bold)),
               ],
             ),
