@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_project/views/home_ui.dart';
 import 'package:flutter_promptpay/flutter_promptpay.dart';
@@ -11,7 +13,7 @@ class QrPaymentPage extends StatefulWidget {
   final Map<String, dynamic> address;
 
   const QrPaymentPage({
-    super.key, 
+    super.key,
     required this.totalAmount,
     required this.cartItems,
     this.customOrders = const [],
@@ -76,7 +78,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFFC48A97),
+                          color: Color.fromARGB(255, 214, 70, 130),
                         ),
                       ),
                       const SizedBox(height: 30),
@@ -87,11 +89,13 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          border: Border.all(color: Colors.brown.withOpacity(0.3), width: 2),
+                          border: Border.all(
+                              color: Colors.brown.withOpacity(0.3), width: 2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: PromptPayQrImageView.mobileNumber(
-                          accountNumber: "0812345678", // TODO: เปลี่ยนเป็นเบอร์พร้อมเพย์ของร้าน
+                          accountNumber:
+                              "0812345678", 
                           amount: widget.totalAmount.toDouble(),
                         ),
                       ),
@@ -116,7 +120,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                
+
                 // Confirm button
                 GestureDetector(
                   onTap: () async {
@@ -128,7 +132,10 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(30),
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFD8A7B1), Color(0xFFC48A97)],
+                        colors: [
+                          Color(0xFFD8A7B1),
+                          Color.fromARGB(255, 172, 83, 160)
+                        ],
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -140,7 +147,7 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                     ),
                     child: const Center(
                       child: Text(
-                        "ฉันได้ชำระเงินเรียบร้อยแล้ว",
+                        "ชำระเงินเรียบร้อยแล้ว",
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -179,18 +186,26 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       final addr = widget.address;
-      final addressText = "${addr['name']} โทร: ${addr['phone']}\n${addr['address']} จ.${addr['province']} ${addr['postalcode']}";
-      
+      final addressText =
+          "${addr['name']} โทร: ${addr['phone']}\n${addr['address']} จ.${addr['province']} ${addr['postalcode']}";
+
       final itemsText = [
         ...widget.cartItems.map((item) => "${item.name} x${item.quantity}"),
         ...widget.customOrders.map((order) {
-           List<String> toppings = [];
-           if (order['is_fruit'] == true) toppings.add('ผลไม้');
-           if (order['is_chocolate'] == true) toppings.add('ช็อกโกแลต');
-           String toppingStr = toppings.isNotEmpty ? ', ท็อปปิ้ง: ${toppings.join(' และ ')}' : '';
-           String colorStr = order['color_name'] != null ? ', ฟรอสซิ่ง: ${order['color_name']}' : '';
-           String msg = (order['message'] != null && order['message'].toString().isNotEmpty) ? ', ข้อความ: "${order['message']}"' : '';
-           return "เค้กสั่งทำ (${order['size']}, รส${order['flavor']}$colorStr$toppingStr$msg)";
+          List<String> toppings = [];
+          if (order['is_fruit'] == true) toppings.add('ผลไม้');
+          if (order['is_chocolate'] == true) toppings.add('ช็อกโกแลต');
+          String toppingStr = toppings.isNotEmpty
+              ? ', ท็อปปิ้ง: ${toppings.join(' และ ')}'
+              : '';
+          String colorStr = order['color_name'] != null
+              ? ', ฟรอสซิ่ง: ${order['color_name']}'
+              : '';
+          String msg = (order['message'] != null &&
+                  order['message'].toString().isNotEmpty)
+              ? ', ข้อความ: "${order['message']}"'
+              : '';
+          return "เค้กสั่งทำ (${order['size']}, รส${order['flavor']}$colorStr$toppingStr$msg)";
         })
       ].join("\n");
 
@@ -225,16 +240,18 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
         title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
         content: const Text(
-          "ชำระเงินสำเร็จ!\nขอบคุณสำหรับการสั่งซื้อค่ะ",
+          "ชำระเงินสำเร็จ!\nขอบคุณสำหรับการสั่งซื้อ",
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.brown),
+          style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.brown),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD8A7B1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             ),
             onPressed: () {
@@ -244,7 +261,9 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
                 (route) => false,
               );
             },
-            child: const Text("กลับสู่หน้าหลัก", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text("กลับสู่หน้าหลัก",
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

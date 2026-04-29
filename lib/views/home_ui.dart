@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_project/views/cart_page.dart';
+import 'package:flutter_project/views/CustomerChatPage.dart';
 import 'package:flutter_project/views/custom_page.dart';
 import 'package:flutter_project/views/home_page.dart';
 import 'package:flutter_project/views/profile_page.dart';
+import 'package:flutter_project/views/admin_inbox_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomeUi extends StatefulWidget {
   const HomeUi({super.key});
@@ -12,20 +15,42 @@ class HomeUi extends StatefulWidget {
 }
 
 class _HomeUiState extends State<HomeUi> {
-  int currentIndex = 0; // เก็บ index ของ tab ปัจจุบัน
+  bool _isAdmin = false;
+  int currentIndex = 0;
   final List<CartItemData> _cartItems = [];
-  final List<Map<String, dynamic>> _customOrders = [];
 
-  void _addCustomOrder(Map<String, dynamic> order) {
-    setState(() {
-      _customOrders.add(order);
-    });
+  Future<void> _checkUserRole() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user != null) {
+      try {
+        // 3. ดึงข้อมูลจากตาราง profiles
+        final data = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (data['role'] == 'admin') {
+          setState(() {
+            _isAdmin = true;
+          });
+        } else {
+          setState(() {
+            _isAdmin = false;
+          });
+        }
+      } catch (e) {
+        debugPrint("Error fetching role: $e");
+      }
+    }
   }
 
-  void _removeCustomOrder(int id) {
-    setState(() {
-      _customOrders.removeWhere((order) => order['id'] == id);
-    });
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole(); // 🚩 สั่งให้เช็กทันทีที่หน้าจอโหลดเสร็จ
   }
 
   void _openCartTab() {
@@ -54,35 +79,59 @@ class _HomeUiState extends State<HomeUi> {
 
   @override
   Widget build(BuildContext context) {
+    
     final pages = [
       HomePage(
+        
         onOrderCake: _addToCart,
         onOpenCart: _openCartTab,
-      ), // หน้า Home
-      CustomPage(
-        onAddCustomOrder: _addCustomOrder,
-        onOpenCart: _openCartTab,
-      ), // หน้า Custom Cake
-      CartPage(
-        cartItems: _cartItems,
-        customOrders: _customOrders,
-        onRemoveCustomOrder: _removeCustomOrder,
-      ), // หน้า Cart
-      const ProfilePage(), // หน้า Profile
+      ),
+      
+       CustomPage(),
+      CartPage(cartItems: _cartItems),
+       ProfilePage(),
     ];
 
     return Scaffold(
-      body: pages[currentIndex], // แสดงหน้าตาม index
+      body: pages[currentIndex],
+
+      // 2. เพิ่มปุ่มลอย (FloatingActionButton) สำหรับแชท
+      floatingActionButton: FloatingActionButton(
+        backgroundColor:  Color(0xFF8B5E6B), // สีชมพูเดิม
+        onPressed: () {
+          
+          if (_isAdmin) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) =>  AdminInboxPage()),
+              
+            );
+            
+          } else {
+            
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>  CustomerChatPage(
+                  adminId: '0efef310-8e42-4f73-94b4-e7c90dc8acb6',
+                  adminName: 'Admin',
+                ),
+              ),
+            );
+          }
+        },
+        child:  Icon(Icons.chat_bubble, color: Colors.white),
+      ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex, // tab ที่ active
-        // 🎨 สี
+        currentIndex: currentIndex,
         backgroundColor: Colors.white,
         selectedItemColor: Colors.pink,
-        unselectedItemColor: Colors.grey,
-        //----
+        unselectedItemColor:  Color.fromARGB(255, 134, 132, 132),
+        type: BottomNavigationBarType
+            .fixed, // เพิ่มเพื่อให้ไอคอนไม่ขยับเวลาเปลี่ยนหน้า
         onTap: (index) {
           setState(() {
-            currentIndex = index; // เปลี่ยนหน้า
+            currentIndex = index;
           });
         },
         items: [
