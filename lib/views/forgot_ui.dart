@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_project/views/prove_ui.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ForgotUi extends StatefulWidget {
   const ForgotUi({super.key});
@@ -10,111 +10,219 @@ class ForgotUi extends StatefulWidget {
 }
 
 class _ForgotUiState extends State<ForgotUi> {
+  final TextEditingController emailController = TextEditingController();
+  bool isLoading = false;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> sendResetEmail() async {
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email address')),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Verification code sent!')),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProveUi(email: email),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 242, 231, 220),
-      //แถบบา
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(221, 126, 121, 94),
-        //ระดับความสูง
-        elevation: 0,
-        //ปุ่มกดกลับ
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Text(
-          'FORGOT PASSWORD',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF5C6CB),
+              Color(0xFFF8D7DA),
+              Color(0xFFFFF0F3),
+            ],
           ),
         ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(40.0),
-          child: Center(
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 30,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF6F4E5C)),
+                  onPressed: () => Navigator.pop(context),
                 ),
-                Text(
-                  'Let’s verify your number!',
-                  style: TextStyle(
-                    fontSize: 20,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+                        const Text(
+                          'FORGOT PASSWORD',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6F4E5C),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Let’s verify your email!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF8B5E6B),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        Image.asset(
+                          'assets/images/email.png',
+                          width: 200,
+                          height: 200,
+                        ),
+                        const SizedBox(height: 40),
+                        Container(
+                          padding: const EdgeInsets.all(30),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.3),
+                                spreadRadius: 2,
+                                blurRadius: 5,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'อีเมล',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: InputDecoration(
+                                  hintText: 'กรุณากรอกอีเมล',
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 15,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.email_outlined,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade200,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 30),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: ElevatedButton(
+                                  onPressed: isLoading ? null : sendResetEmail,
+                                  style: ElevatedButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                  ).copyWith(
+                                    backgroundColor: const WidgetStatePropertyAll(
+                                      Colors.transparent,
+                                    ),
+                                    shadowColor: const WidgetStatePropertyAll(
+                                      Colors.transparent,
+                                    ),
+                                  ),
+                                  child: Ink(
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF8B5E6B),
+                                          Color(0xFFB87B8E),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                    child: Center(
+                                      child: isLoading
+                                          ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2.5,
+                                              ),
+                                            )
+                                          : const Text(
+                                              'Send verification code',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
                   ),
                 ),
-                SizedBox(
-                  height: 50,
-                ),
-                Image.asset(
-                  'assets/images/phone.png',
-                  width: 300,
-                  height: 300,
-                ),
-                SizedBox(
-                  height: 50,
-                ),
-                TextField(
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                  decoration: InputDecoration(
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(9.0),
-                      borderSide: BorderSide(
-                        color: const Color.fromARGB(255, 128, 94, 39),
-                        width: 2,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      //กดกรอกแล้วเปลี่ยนสีขอบ
-                      borderRadius: BorderRadius.circular(9.0),
-                      borderSide: BorderSide(
-                        color: const Color.fromARGB(255, 225, 190, 132),
-                        width: 2,
-                      ),
-                    ),
-                    hintText: 'Phone number',
-                    hintStyle: TextStyle(
-                      color: const Color.fromARGB(255, 95, 71, 37),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 25.0,
-                      horizontal: 20.0,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 40,
-                ),
-                //กดปุ่มแบบข้อความ
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProveUi(),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'Send verification code',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.brown,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

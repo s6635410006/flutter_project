@@ -1,28 +1,47 @@
-// ignore_for_file: sort_child_properties_last
-
 import 'package:flutter/material.dart';
-import 'package:flutter_project/views/new_password_ui.dart';
+import 'package:flutter_project/views/awesome_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProveUi extends StatefulWidget {
-  final String email;
-
-  const ProveUi({super.key, required this.email});
+class NewPasswordUi extends StatefulWidget {
+  const NewPasswordUi({super.key});
 
   @override
-  State<ProveUi> createState() => _ProveUiState();
+  State<NewPasswordUi> createState() => _NewPasswordUiState();
 }
 
-class _ProveUiState extends State<ProveUi> {
+class _NewPasswordUiState extends State<NewPasswordUi> {
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
   bool isLoading = false;
-  //รับค่าที่ผู้ใช้กรอก เอาค่า OTP ไปใช้ต่อ เช่น ส่งไป server
-  TextEditingController otpController = TextEditingController();
 
-  Future<void> verifyOtp() async {
-    final otp = otpController.text.trim();
-    if (otp.isEmpty) {
+  @override
+  void dispose() {
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> updatePassword() async {
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
+
+    if (password.isEmpty || confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the verification code')),
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 6 characters')),
       );
       return;
     }
@@ -32,33 +51,22 @@ class _ProveUiState extends State<ProveUi> {
     });
 
     try {
-      await Supabase.instance.client.auth.verifyOTP(
-        email: widget.email,
-        token: otp,
-        type: OtpType.recovery,
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: password),
       );
+      
       if (mounted) {
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => NewPasswordUi(),
+            builder: (context) => const AwesomeUi(),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(e.toString()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     } finally {
@@ -66,33 +74,6 @@ class _ProveUiState extends State<ProveUi> {
         setState(() {
           isLoading = false;
         });
-      }
-    }
-  }
-
-  Future<void> resendOtp() async {
-    try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(widget.email);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verification code resent!')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(e.toString()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
       }
     }
   }
@@ -130,7 +111,7 @@ class _ProveUiState extends State<ProveUi> {
                       children: [
                         const SizedBox(height: 20),
                         const Text(
-                          'FORGOT PASSWORD',
+                          'NEW PASSWORD',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -139,17 +120,11 @@ class _ProveUiState extends State<ProveUi> {
                         ),
                         const SizedBox(height: 10),
                         const Text(
-                          'Enter verification code',
+                          'Create new password',
                           style: TextStyle(
                             fontSize: 16,
                             color: Color(0xFF8B5E6B),
                           ),
-                        ),
-                        const SizedBox(height: 30),
-                        Image.asset(
-                          'assets/images/email.png',
-                          width: 200,
-                          height: 200,
                         ),
                         const SizedBox(height: 40),
                         Container(
@@ -170,7 +145,7 @@ class _ProveUiState extends State<ProveUi> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'OTP Code',
+                                'รหัสผ่านใหม่',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -179,47 +154,63 @@ class _ProveUiState extends State<ProveUi> {
                               ),
                               const SizedBox(height: 10),
                               TextField(
-                                controller: otpController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 6,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  letterSpacing: 10,
-                                ),
+                                controller: passwordController,
+                                obscureText: true,
                                 decoration: InputDecoration(
-                                  counterText: '',
+                                  hintText: 'New Password',
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 14,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.grey.shade500,
+                                  ),
                                   filled: true,
                                   fillColor: Colors.grey.shade200,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(30),
                                     borderSide: BorderSide.none,
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              Center(
-                                child: GestureDetector(
-                                  onTap: resendOtp,
-                                  child: const Text(
-                                    'Resend verification code',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF8B5E6B),
-                                      decoration: TextDecoration.underline,
-                                    ),
+                              Text(
+                                'ยืนยันรหัสผ่าน',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: confirmPasswordController,
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  hintText: 'Confirm Password',
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 14,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.lock_outline,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade200,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                    borderSide: BorderSide.none,
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 30),
+                              const SizedBox(height: 40),
                               SizedBox(
                                 width: double.infinity,
                                 height: 52,
                                 child: ElevatedButton(
-                                  onPressed: isLoading ? null : verifyOtp,
+                                  onPressed: isLoading ? null : updatePassword,
                                   style: ElevatedButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     shape: RoundedRectangleBorder(
@@ -254,7 +245,7 @@ class _ProveUiState extends State<ProveUi> {
                                               ),
                                             )
                                           : const Text(
-                                              'CONFIRM',
+                                              'SAVE',
                                               style: TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_project/views/create_account_ui.dart';
+import 'package:flutter_project/views/forgot_ui.dart';
 import 'package:flutter_project/views/home_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -269,7 +270,14 @@ class _LoginUiState extends State<LoginUi> {
                           ],
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgotUi(),
+                              ),
+                            );
+                          },
                           child: Text(
                             'Forgot Password?',
                             style: TextStyle(
