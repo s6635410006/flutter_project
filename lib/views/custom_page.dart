@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_project/views/home_ui.dart';
 import 'package:flutter_project/views/cart_page.dart';
 import 'package:flutter_project/views/qr_payment_page.dart';
@@ -17,6 +20,7 @@ class CustomPage extends StatefulWidget {
 
 class _CustomPageState extends State<CustomPage> {
   bool _isSaving = false;
+  bool _isUploading = false;
 
   // เก็บค่าที่ผู้ใช้เลือก
   int selectedSize = 0; // index ขนาด
@@ -25,10 +29,12 @@ class _CustomPageState extends State<CustomPage> {
   bool isChocolate = true; // topping chocolate
   bool isFruit = false; // topping fruit
 
+  XFile? _referenceImage;
+
   // รายการตัวเลือก
-  List<String> sizes = ["1 ปอนด์", "2 ปอนด์", "3 ปอนด์"];
-  List<int> prices = [350, 550, 750];
-  List<String> flavors = ["ช็อกโกแลต", "วานิลลา", "สตรอว์เบอร์รี่"];
+  List<String> sizes = ["1 ปอนด์", "2 ปอนด์", "3 ปอนด์", "4 ปอนด์", "5 ปอนด์", "6 ปอนด์", "7 ปอนด์", "8 ปอนด์", "9 ปอนด์", "10 ปอนด์"];
+  List<int> prices = [350, 550, 750, 950, 1150, 0, 0, 0, 0, 0];
+  List<String> flavors = ["ช็อกโกแลต", "วานิลลา", "สตรอว์เบอร์รี่", "Custom Flavor"];
 
   // สี frosting
   List<Color> colors = [
@@ -58,6 +64,105 @@ class _CustomPageState extends State<CustomPage> {
 
   //คือการ สร้างตัวควบคุม (controller) สำหรับ TextField เพื่อใช้ “เก็บและจัดการข้อความที่ผู้ใช้พิมพ์”
   TextEditingController messageCtrl = TextEditingController();
+  TextEditingController customDesignCtrl = TextEditingController();
+
+  // ตรวจสอบว่าเป็น Custom Mode หรือไม่
+  bool get isCustomMode {
+    bool isLargeSize = selectedSize > 4; // > 5 ปอนด์
+    bool isCustomFlavor = selectedFlavor == flavors.length - 1; // เลือก Custom Flavor
+    bool hasImage = _referenceImage != null;
+    bool hasCustomText = customDesignCtrl.text.isNotEmpty;
+    return isLargeSize || isCustomFlavor || hasImage || hasCustomText;
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _referenceImage = pickedFile;
+      });
+    }
+  }
+
+  Future<String?> _uploadImage(XFile imageFile) async {
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final bytes = await imageFile.readAsBytes();
+      await Supabase.instance.client.storage
+          .from('cake_references')
+          .uploadBinary(fileName, bytes);
+      
+      final imageUrl = Supabase.instance.client.storage
+          .from('cake_references')
+          .getPublicUrl(fileName);
+      return imageUrl;
+    } catch (e) {
+      debugPrint("Upload error: $e");
+      return null;
+    }
+  }
+
+  Future<void> _submitCustomRequest() async {
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('กรุณาล็อกอินก่อนส่งออเดอร์')),
+        );
+        setState(() {
+          _isUploading = false;
+        });
+        return;
+      }
+
+      String? imageUrl;
+      if (_referenceImage != null) {
+        imageUrl = await _uploadImage(_referenceImage!);
+      }
+
+      await Supabase.instance.client.from('custom_requests').insert({
+        'userid': user.id,
+        'size': sizes[selectedSize],
+        'flavor': flavors[selectedFlavor],
+        'colorname': colorNames[selectedColor],
+        'personalmessage': messageCtrl.text,
+        'customdescription': customDesignCtrl.text,
+        'referenceimageurl': imageUrl,
+        'isfruit': isFruit,
+        'ischocolate': isChocolate,
+        'status': 'pending_approval',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ส่งออเดอร์ให้แอดมินประเมินราคาเรียบร้อยแล้ว')),
+      );
+
+      setState(() {
+        selectedSize = 0;
+        selectedFlavor = 1;
+        selectedColor = 0;
+        isChocolate = true;
+        isFruit = false;
+        messageCtrl.clear();
+        customDesignCtrl.clear();
+        _referenceImage = null;
+      });
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+      );
+    }
+
+    setState(() {
+      _isUploading = false;
+    });
+  }
 
   Future<void> _saveCustomOrder() async {
     if (widget.onAddCustomOrder != null) {
@@ -134,12 +239,26 @@ class _CustomPageState extends State<CustomPage> {
                 borderRadius: BorderRadiusGeometry.circular(25),
                 child: Stack(
                   children: [
-                    Image.asset(
-                      'assets/images/c4.jpg',
-                      height: 300,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                    _referenceImage != null
+                        ? (kIsWeb
+                            ? Image.network(
+                                _referenceImage!.path,
+                                height: 300,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.file(
+                                File(_referenceImage!.path),
+                                height: 300,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ))
+                        : Image.asset(
+                            'assets/images/c4.jpg',
+                            height: 300,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
 
                     //กล่อง previews ลอย
                     Positioned(
@@ -203,22 +322,25 @@ class _CustomPageState extends State<CustomPage> {
               SizedBox(
                 height: 10,
               ),
-              Row(
-                children: List.generate(sizes.length, (index) {
-                  return Padding(
-                    padding: EdgeInsets.only(right: 10),
-                    child: ChoiceChip(
-                      label: Text(sizes[index]),
-                      selected: selectedSize == index,
-                      selectedColor: Colors.pink.shade100,
-                      onSelected: (_) {
-                        setState(() {
-                          selectedSize = index; // เปลี่ยนค่า
-                        });
-                      },
-                    ),
-                  );
-                }),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: List.generate(sizes.length, (index) {
+                    return Padding(
+                      padding: EdgeInsets.only(right: 10),
+                      child: ChoiceChip(
+                        label: Text(sizes[index]),
+                        selected: selectedSize == index,
+                        selectedColor: Colors.pink.shade100,
+                        onSelected: (_) {
+                          setState(() {
+                            selectedSize = index; // เปลี่ยนค่า
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                ),
               ),
               SizedBox(
                 height: 20,
@@ -230,24 +352,27 @@ class _CustomPageState extends State<CustomPage> {
               SizedBox(
                 height: 10,
               ),
-              Row(
-                children: List.generate(flavors.length, (index) {
-                  return Padding(
-                    padding: EdgeInsets.only(right: 10),
-                    //-----
-                    child: ChoiceChip(
-                      label: Text(flavors[index]),
-                      selected: selectedFlavor == index,
-                      selectedColor: Colors.pink.shade100,
-                      //------
-                      onSelected: (_) {
-                        setState(() {
-                          selectedFlavor = index;
-                        });
-                      },
-                    ),
-                  );
-                }),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: List.generate(flavors.length, (index) {
+                    return Padding(
+                      padding: EdgeInsets.only(right: 10),
+                      //-----
+                      child: ChoiceChip(
+                        label: Text(flavors[index]),
+                        selected: selectedFlavor == index,
+                        selectedColor: Colors.pink.shade100,
+                        //------
+                        onSelected: (_) {
+                          setState(() {
+                            selectedFlavor = index;
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                ),
               ),
               SizedBox(
                 height: 20,
@@ -259,35 +384,38 @@ class _CustomPageState extends State<CustomPage> {
               SizedBox(
                 height: 10,
               ),
-              Row(
-                children: List.generate(
-                  colors.length,
-                  (index) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedColor = index;
-                        });
-                      },
-                      //----
-                      child: Container(
-                        margin: EdgeInsets.only(right: 10),
-                        width: 40,
-                        height: 40,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: List.generate(
+                    colors.length,
+                    (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedColor = index;
+                          });
+                        },
                         //----
-                        decoration: BoxDecoration(
-                          color: colors[index],
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: selectedColor == index
-                                ? Colors.black
-                                : Colors.transparent,
-                            width: 2,
+                        child: Container(
+                          margin: EdgeInsets.only(right: 10),
+                          width: 40,
+                          height: 40,
+                          //----
+                          decoration: BoxDecoration(
+                            color: colors[index],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selectedColor == index
+                                  ? Colors.black
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
               SizedBox(
@@ -313,6 +441,63 @@ class _CustomPageState extends State<CustomPage> {
                   ),
                 ),
               ),
+              SizedBox(
+                height: 20,
+              ),
+              // 📸 CUSTOM REFERENCE
+              Text("Custom Design & Reference (Optional)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
+              SizedBox(height: 10),
+              TextField(
+                controller: customDesignCtrl,
+                maxLines: 3,
+                onChanged: (val) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: "Describe your cake...",
+                  filled: true,
+                  fillColor: Colors.grey.shade200,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: _pickImage,
+                icon: Icon(Icons.upload_file),
+                label: Text(_referenceImage == null ? "Upload Reference Image" : "Image Selected"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pink.shade100,
+                  foregroundColor: Colors.brown,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+              ),
+              if (_referenceImage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: kIsWeb
+                            ? Image.network(_referenceImage!.path, height: 100, width: 100, fit: BoxFit.cover)
+                            : Image.file(File(_referenceImage!.path), height: 100, width: 100, fit: BoxFit.cover),
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: IconButton(
+                          icon: Icon(Icons.cancel, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              _referenceImage = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               SizedBox(
                 height: 20,
               ),
@@ -357,8 +542,86 @@ class _CustomPageState extends State<CustomPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(30), // โค้งทุกด้าน
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 10,
+                offset: Offset(0, -5),
+              )
+            ],
           ),
-          child: Row(
+          child: isCustomMode 
+          ? Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Order requires admin approval",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade800,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        "Custom Price",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF7B5E57),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _isUploading ? null : _submitCustomRequest,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade400,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 18,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _isUploading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          children: [
+                            Text(
+                              "Send for\nApproval",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                height: 1.3,
+                              ),
+                            ),
+                            SizedBox(width: 5),
+                            Icon(
+                              Icons.send,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            )
+          : Row(
             children: [
               /// 💰 PRICE
               Expanded(
@@ -453,6 +716,7 @@ class _CustomPageState extends State<CustomPage> {
   @override
   void dispose() {
     messageCtrl.dispose();
+    customDesignCtrl.dispose();
     super.dispose();
   }
 }

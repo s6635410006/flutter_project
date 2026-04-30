@@ -9,6 +9,8 @@ import 'package:flutter_project/views/order_history_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import "package:flutter_project/views/admin_page.dart";
+import "package:flutter_project/views/admin_custom_requests_page.dart";
+import "package:flutter_project/views/user_notification_page.dart";
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -309,9 +311,23 @@ class _ProfilePageState extends State<ProfilePage> {
                 iconColor: Colors.pink.shade300,
                 textColor: Colors.pink.shade300,
               ),
+            if (_isAdmin)
+              settingItem(
+                Icons.rate_review,
+                "รายการประเมินราคา Custom (Admin)",
+                () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => AdminCustomRequestsPage()));
+                },
+                iconColor: Colors.pink.shade300,
+                textColor: Colors.pink.shade300,
+              ),
             settingItem(Icons.history, "ประวัติการสั่งซื้อ", () {
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => OrderHistoryPage()));
+            }),
+            settingItem(Icons.notifications_active, "แจ้งเตือนประเมินราคา", () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => UserNotificationPage()));
             }),
             settingItem(Icons.person, "แก้ไขข้อมูลส่วนตัว", () {}),
             settingItem(Icons.location_on, "ที่อยู่จัดส่ง", () {

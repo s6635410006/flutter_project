@@ -421,7 +421,7 @@ class _CategoryCircle extends StatelessWidget {
   }
 }
 
-class _CakeCard extends StatelessWidget {
+class _CakeCard extends StatefulWidget {
   const _CakeCard({
     required this.cake,
     required this.isFavorite,
@@ -435,6 +435,13 @@ class _CakeCard extends StatelessWidget {
   final VoidCallback onOrderTap;
 
   @override
+  State<_CakeCard> createState() => _CakeCardState();
+}
+
+class _CakeCardState extends State<_CakeCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     // การ์ดสินค้า 1 ใบ (รูป, ปุ่มหัวใจ, ชื่อ, ราคา, ปุ่ม ORDER)
     return Column(
@@ -446,7 +453,7 @@ class _CakeCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(26),
                 child: Image.network(
-                  cake.imageUrl,
+                  widget.cake.imageUrl,
                   width: double.infinity,
                   height: double.infinity,
                   fit: BoxFit.cover,
@@ -472,7 +479,7 @@ class _CakeCard extends StatelessWidget {
                 top: 10,
                 right: 10,
                 child: InkWell(
-                  onTap: onFavoriteTap,
+                  onTap: widget.onFavoriteTap,
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     width: 34,
@@ -482,7 +489,7 @@ class _CakeCard extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_outline,
+                      widget.isFavorite ? Icons.favorite : Icons.favorite_outline,
                       size: 19,
                       color: const Color(0xFF7A4D60),
                     ),
@@ -494,7 +501,7 @@ class _CakeCard extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          cake.name,
+          widget.cake.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
@@ -503,24 +510,62 @@ class _CakeCard extends StatelessWidget {
             height: 1.2,
           ),
         ),
-        if (cake.description.isNotEmpty) ...[
+        if (widget.cake.description.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(
-            cake.description,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-              height: 1.2,
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final textStyle = TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                height: 1.2,
+              );
+              final textSpan = TextSpan(text: widget.cake.description, style: textStyle);
+              final textPainter = TextPainter(
+                text: textSpan,
+                maxLines: 2,
+                textDirection: TextDirection.ltr,
+              );
+              textPainter.layout(maxWidth: constraints.maxWidth);
+              final isOverflowing = textPainter.didExceedMaxLines;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.cake.description,
+                    maxLines: _isExpanded ? 10 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textStyle,
+                  ),
+                  if (isOverflowing)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isExpanded = !_isExpanded;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          _isExpanded ? 'แสดงน้อยลง' : 'แสดงเพิ่มเติม',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF7A4D60),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
         const SizedBox(height: 6),
         Row(
           children: [
             Text(
-              '฿${cake.price}',
+              '฿${widget.cake.price}',
               style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w700,
@@ -531,7 +576,7 @@ class _CakeCard extends StatelessWidget {
             SizedBox(
               height: 30,
               child: ElevatedButton(
-                onPressed: onOrderTap,
+                onPressed: widget.onOrderTap,
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: const Color(0xFF7A4D60),

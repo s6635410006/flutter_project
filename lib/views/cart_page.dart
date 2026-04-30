@@ -39,11 +39,32 @@ class _CartPageState extends State<CartPage> {
   static const int _shippingFee = 45;
   Map<String, dynamic>? _address;
   bool _isLoadingAddress = true;
+  List<Map<String, dynamic>> _dbCustomOrders = [];
 
   @override
   void initState() {
     super.initState();
     _fetchAddress();
+    _fetchCustomOrders();
+  }
+
+  Future<void> _fetchCustomOrders() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final data = await Supabase.instance.client
+          .from('custom_requests')
+          .select()
+          .eq('userid', user.id)
+          .eq('status', 'confirmed');
+      if (mounted) {
+        setState(() {
+          _dbCustomOrders = List<Map<String, dynamic>>.from(data);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching custom orders: $e");
+    }
   }
 
 //-----สร้าง/เพิ่ม order----------
@@ -62,8 +83,15 @@ class _CartPageState extends State<CartPage> {
 
     String productNames = "";
     try {
-      // แก้ไขตาม Error: ใช้ .name เพราะเป็น CartItemData ไม่ใช่ Map
       productNames = widget.cartItems.map((item) => item.name).join(', ');
+      if (_dbCustomOrders.isNotEmpty) {
+        final customNames = _dbCustomOrders.map((e) => 'Custom Cake #${e['id']}').join(', ');
+        if (productNames.isNotEmpty) {
+          productNames += ', $customNames';
+        } else {
+          productNames = customNames;
+        }
+      }
     } catch (e) {
       return;
     }
@@ -87,6 +115,14 @@ class _CartPageState extends State<CartPage> {
       await Supabase.instance.client
           .from('carts')
           .update({'status': 'ordered'}).eq('userid', user.id);
+
+      // อัปเดต custom_requests ด้วย
+      for (var customReq in _dbCustomOrders) {
+        await Supabase.instance.client
+            .from('custom_requests')
+            .update({'status': 'ordered'})
+            .eq('id', customReq['id']);
+      }
 
 
       if (mounted) {
@@ -134,12 +170,12 @@ class _CartPageState extends State<CartPage> {
   int get _subtotal {
     int regularTotal = widget.cartItems
         .fold(0, (sum, item) => sum + (item.price * item.quantity));
-    int customTotal = widget.customOrders
-        .fold(0, (sum, item) => sum + ((item['price'] as int?) ?? 0));
+    int customTotal = _dbCustomOrders
+        .fold(0, (sum, item) => sum + ((item['quoted_price'] as int?) ?? 0));
     return regularTotal + customTotal;
   }
 
-  int get _shipping => (widget.cartItems.isEmpty && widget.customOrders.isEmpty)
+  int get _shipping => (widget.cartItems.isEmpty && _dbCustomOrders.isEmpty)
       ? 0
       : _shippingFee;
 
@@ -194,7 +230,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                   ),
                   Text(
-                    "${widget.cartItems.length + widget.customOrders.length} Items",
+                    "${widget.cartItems.length + _dbCustomOrders.length} Items",
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -206,7 +242,7 @@ class _CartPageState extends State<CartPage> {
 
               const SizedBox(height: 20),
 
-              if (widget.cartItems.isEmpty && widget.customOrders.isEmpty)
+              if (widget.cartItems.isEmpty && _dbCustomOrders.isEmpty)
                 Container(
                   width: double.infinity,
                   padding:
@@ -256,7 +292,7 @@ class _CartPageState extends State<CartPage> {
                     },
                   );
                 }),
-                if (widget.customOrders.isNotEmpty) ...[
+                if (_dbCustomOrders.isNotEmpty) ...[
                   if (widget.cartItems.isNotEmpty) const SizedBox(height: 20),
                   const Align(
                     alignment: Alignment.centerLeft,
@@ -270,7 +306,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  ...widget.customOrders.map((order) {
+                  ..._dbCustomOrders.map((order) {
                     return _customCakeItem(order);
                   }),
                 ],
@@ -425,7 +461,7 @@ class _CartPageState extends State<CartPage> {
                       onTap: () async {
                         // 1. เช็กสินค้าในตะกร้า
                         if (widget.cartItems.isEmpty &&
-                            widget.customOrders.isEmpty) {
+                            _dbCustomOrders.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                                 content: Text('ไม่มีสินค้าในตะกร้า')),
@@ -452,7 +488,7 @@ class _CartPageState extends State<CartPage> {
                               builder: (context) => QrPaymentPage(
                                 totalAmount: _total,
                                 cartItems: widget.cartItems,
-                                customOrders: widget.customOrders,
+                                customOrders: _dbCustomOrders,
                                 address: _address!,
                               ),
                             ),
@@ -521,7 +557,7 @@ class _CartPageState extends State<CartPage> {
               Row(
                 children: [
                   Text(
-                    _formatCurrency(order['price'] ?? 0),
+                    _formatCurrency((order['quoted_price'] as int?) ?? 0),
                     style: TextStyle(
                       color: Colors.brown,
                       fontWeight: FontWeight.bold,
@@ -530,9 +566,22 @@ class _CartPageState extends State<CartPage> {
                   ),
                   SizedBox(width: 10),
                   GestureDetector(
-                    onTap: () {
-                      if (widget.onRemoveCustomOrder != null) {
-                        widget.onRemoveCustomOrder!(order['id']);
+                    onTap: () async {
+                      try {
+                        await Supabase.instance.client
+                            .from('custom_requests')
+                            .update({'status': 'cancelled'})
+                            .eq('id', order['id']);
+                        setState(() {
+                          _dbCustomOrders.removeWhere((item) => item['id'] == order['id']);
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('นำเค้กสั่งทำออกจากตะกร้าแล้ว')),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
                       }
                     },
                     child:
@@ -545,12 +594,12 @@ class _CartPageState extends State<CartPage> {
           Divider(),
           _customCakeDetailRow("Size", order['size']),
           _customCakeDetailRow("Flavor", order['flavor']),
-          _customCakeDetailRow("Color", order['color_name'] ?? 'ไม่มี'),
+          _customCakeDetailRow("Color", order['colorname'] ?? 'ไม่มี'),
           _customCakeDetailRow("Message",
-              order['message']?.isEmpty ?? true ? "-" : order['message']),
-          if (order['is_fruit'] == true)
+              order['personalmessage']?.toString().isEmpty ?? true ? "-" : order['personalmessage']),
+          if (order['isfruit'] == true)
             _customCakeDetailRow("Topping", "Fruit (+฿20)"),
-          if (order['is_chocolate'] == true)
+          if (order['ischocolate'] == true)
             _customCakeDetailRow("Topping", "Chocolate (+฿30)"),
         ],
       ),
