@@ -239,19 +239,21 @@ Widget _buildMessageList() {
                 isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // 👤 แอดมิน (ซ้าย) แสดงตลอด
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: const Color(0xFFE6B0D6),
-                  backgroundImage:
-                      (_adminAvatarUrl != null) ? NetworkImage(_adminAvatarUrl!) : null,
-                  child: (_adminAvatarUrl == null)
-                      ? const Icon(Icons.store, size: 18, color: Colors.white)
-                      : null,
+              // 👤 ฝั่งแอดมิน (ซ้าย) เฉพาะตอนแอดมินส่ง
+              if (!isMe)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: const Color(0xFFE6B0D6),
+                    backgroundImage: (_adminAvatarUrl != null)
+                        ? NetworkImage(_adminAvatarUrl!)
+                        : null,
+                    child: (_adminAvatarUrl == null)
+                        ? const Icon(Icons.store, size: 18, color: Colors.white)
+                        : null,
+                  ),
                 ),
-              ),
 
               Flexible(
                 child: Container(
@@ -328,20 +330,22 @@ Widget _buildMessageList() {
                 ),
               ),
 
-              // 👤 ลูกค้า (ขวา) แสดงตลอด
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: const Color(0xFFF5E1F0),
-                  backgroundImage:
-                      (_myAvatarUrl != null) ? NetworkImage(_myAvatarUrl!) : null,
-                  child: (_myAvatarUrl == null)
-                      ? const Icon(Icons.person,
-                          size: 16, color: Color(0xFF6D4C41))
-                      : null,
+              // 👤 ฝั่งลูกค้า (ขวา) เฉพาะตอนลูกค้าส่ง
+              if (isMe)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: const Color(0xFFF5E1F0),
+                    backgroundImage: (_myAvatarUrl != null)
+                        ? NetworkImage(_myAvatarUrl!)
+                        : null,
+                    child: (_myAvatarUrl == null)
+                        ? const Icon(Icons.person,
+                            size: 16, color: Color(0xFF6D4C41))
+                        : null,
+                  ),
                 ),
-              ),
             ],
           ),
 
