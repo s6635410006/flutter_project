@@ -728,26 +728,40 @@ class _CategoryItem {
   factory _CategoryItem.fromJson(Map<String, dynamic> json) {
     IconData getIcon(String code) {
       switch (code) {
+        case 'birthday':
+        case 'birthday_cake':
+          return FontAwesomeIcons.cakeCandles;
+        case 'wedding':
+        case 'wedding_cake':
+          return FontAwesomeIcons.layerGroup;
         case 'cake': return Icons.cake;
         case 'favorite': return Icons.favorite;
         case 'delivery_dining': return Icons.delivery_dining;
         case 'palette': return Icons.palette;
-        default: return Icons.more_horiz;
+        default: return Icons.cake;
       }
     }
     
     final name = json['name']?.toString() ?? '';
-    final normalized = name.replaceAll(' ', '');
+    final normalized = name.replaceAll(' ', '').toLowerCase();
+    final iconCode = (json['icon_code']?.toString() ?? '').toLowerCase();
     IconData iconByName() {
-      if (normalized.contains('เค้กวันเกิด')) {
+      if (iconCode.contains('birthday') ||
+          normalized.contains('เค้กวันเกิด') ||
+          normalized.contains('วันเกิด') ||
+          normalized.contains('birthday')) {
         // เค้ก 1 ชั้น (birthday)
         return FontAwesomeIcons.cakeCandles;
       }
-      if (normalized.contains('เค้กงานแต่ง')) {
+      if (iconCode.contains('wedding') ||
+          normalized.contains('เค้กงานแต่ง') ||
+          normalized.contains('แต่งงาน') ||
+          normalized.contains('งานแต่ง') ||
+          normalized.contains('wedding')) {
         // เค้ก 2 ชั้น (wedding)
         return FontAwesomeIcons.layerGroup;
       }
-      return getIcon(json['icon_code']?.toString() ?? '');
+      return getIcon(iconCode);
     }
 
     return _CategoryItem(
