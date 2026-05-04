@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_project/views/notification_center_page.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomePage extends StatefulWidget {
@@ -735,10 +736,24 @@ class _CategoryItem {
       }
     }
     
+    final name = json['name']?.toString() ?? '';
+    final normalized = name.replaceAll(' ', '');
+    IconData iconByName() {
+      if (normalized.contains('เค้กวันเกิด')) {
+        // เค้ก 1 ชั้น (birthday)
+        return FontAwesomeIcons.cakeCandles;
+      }
+      if (normalized.contains('เค้กงานแต่ง')) {
+        // เค้ก 2 ชั้น (wedding)
+        return FontAwesomeIcons.layerGroup;
+      }
+      return getIcon(json['icon_code']?.toString() ?? '');
+    }
+
     return _CategoryItem(
       id: json['id'],
-      icon: getIcon(json['icon_code']?.toString() ?? ''),
-      label: json['name']?.toString() ?? '',
+      icon: iconByName(),
+      label: name,
       active: json['is_active'] ?? false,
     );
   }
