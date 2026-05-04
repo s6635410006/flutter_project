@@ -3,10 +3,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_project/views/home_ui.dart';
-import 'package:flutter_project/views/cart_page.dart';
-import 'package:flutter_project/views/qr_payment_page.dart';
-import 'package:flutter_project/views/profile_page.dart';
 
 
 class CustomPage extends StatefulWidget {
@@ -19,7 +15,6 @@ class CustomPage extends StatefulWidget {
 }
 
 class _CustomPageState extends State<CustomPage> {
-  bool _isSaving = false;
   bool _isUploading = false;
 
   // เก็บค่าที่ผู้ใช้เลือก
@@ -199,7 +194,6 @@ class _CustomPageState extends State<CustomPage> {
 
   @override
   Widget build(BuildContext context) {
-    int totalPrice = calculatePrice();
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
@@ -550,134 +544,47 @@ class _CustomPageState extends State<CustomPage> {
               )
             ],
           ),
-          child: isCustomMode 
-          ? Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "Order requires admin approval",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange.shade800,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        "Custom Price",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF7B5E57),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: _isUploading ? null : _submitCustomRequest,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.shade400,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 18,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isUploading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Row(
-                          children: [
-                            Text(
-                              "Send for\nApproval",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                height: 1.3,
-                              ),
-                            ),
-                            SizedBox(width: 5),
-                            Icon(
-                              Icons.send,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ),
-                ),
-              ],
-            )
-          : Row(
+          child: Row(
             children: [
-              /// 💰 PRICE
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      "ESTIMATED TOTAL",
+                      "ส่งคำขอให้แอดมินคำนวณราคา",
                       style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey,
-                        letterSpacing: 1.2,
+                        fontSize: 12,
+                        color: Colors.orange.shade800,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(
-                          "฿${totalPrice + 40}",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          "฿$totalPrice",
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF7B5E57),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      "รอแอดมินประเมินราคา",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF7B5E57),
+                      ),
                     ),
                   ],
                 ),
               ),
-
-              /// 🛒 BUTTON
               ElevatedButton(
-                onPressed: _isSaving ? null : _saveCustomOrder,
+                onPressed: _isUploading ? null : _submitCustomRequest,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF7B5E57),
+                  backgroundColor: Colors.orange.shade400,
                   padding: EdgeInsets.symmetric(
-                    horizontal: 26,
-                    vertical: 18,
+                    horizontal: 18,
+                    vertical: 16,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                   elevation: 0,
                 ),
-                child: _isSaving
+                child: _isUploading
                     ? const SizedBox(
                         width: 24,
                         height: 24,
@@ -687,18 +594,18 @@ class _CustomPageState extends State<CustomPage> {
                         ),
                       )
                     : Row(
-                        children: [
+                        children: const [
                           Text(
-                            "เพิ่มลง\nตะกร้า",
+                            "ส่งให้แอดมิน",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14,
                               height: 1.3,
                             ),
                           ),
-                          SizedBox(width: 10),
+                          SizedBox(width: 8),
                           Icon(
-                            Icons.arrow_forward,
+                            Icons.send,
                             size: 18,
                             color: Colors.white,
                           ),

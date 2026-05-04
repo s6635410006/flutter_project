@@ -8,7 +8,10 @@ import 'package:flutter_project/views/admin_inbox_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomeUi extends StatefulWidget {
-  const HomeUi({super.key});
+  const HomeUi({super.key, this.initialTabIndex = 0});
+
+  /// 0 Home, 1 Custom, 2 Cart, 3 Profile
+  final int initialTabIndex;
 
   @override
   State<HomeUi> createState() => _HomeUiState();
@@ -16,7 +19,7 @@ class HomeUi extends StatefulWidget {
 
 class _HomeUiState extends State<HomeUi> {
   bool _isAdmin = false;
-  int currentIndex = 0;
+  late int currentIndex;
   final List<CartItemData> _cartItems = [];
 
   Future<void> _checkUserRole() async {
@@ -50,6 +53,7 @@ class _HomeUiState extends State<HomeUi> {
   @override
   void initState() {
     super.initState();
+    currentIndex = widget.initialTabIndex.clamp(0, 3);
     _checkUserRole(); // 🚩 สั่งให้เช็กทันทีที่หน้าจอโหลดเสร็จ
   }
 
@@ -96,32 +100,82 @@ class _HomeUiState extends State<HomeUi> {
       body: pages[currentIndex],
 
       // 2. เพิ่มปุ่มลอย (FloatingActionButton) สำหรับแชท
-      floatingActionButton: FloatingActionButton(
-        backgroundColor:  Color(0xFF8B5E6B), // สีชมพูเดิม
-        onPressed: () {
-          
-          if (_isAdmin) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) =>  AdminInboxPage()),
-              
-            );
-            
-          } else {
-            
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>  CustomerChatPage(
-                  adminId: '0efef310-8e42-4f73-94b4-e7c90dc8acb6',
-                  adminName: 'Admin',
-                ),
-              ),
-            );
-          }
-        },
-        child:  Icon(Icons.chat_bubble, color: Colors.white),
-      ),
+      floatingActionButton: _isAdmin
+          ? StreamBuilder<List<Map<String, dynamic>>>(
+              stream: Supabase.instance.client
+                  .from('messages')
+                  .stream(primaryKey: ['id'])
+                  .order('created_at', ascending: false),
+              builder: (context, snapshot) {
+                final myId = Supabase.instance.client.auth.currentUser?.id;
+                final rows = snapshot.data ?? const <Map<String, dynamic>>[];
+                final unread = myId == null
+                    ? 0
+                    : rows.where((m) {
+                        return m['receiver_id'] == myId &&
+                            (m['is_from_admin'] ?? false) == false &&
+                            (m['is_read'] == true ? false : true);
+                      }).length;
+
+                return FloatingActionButton(
+                  backgroundColor: const Color(0xFF8B5E6B),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AdminInboxPage()),
+                    );
+                  },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.chat_bubble, color: Colors.white),
+                      if (unread > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            constraints: const BoxConstraints(minWidth: 18),
+                            child: Text(
+                              unread > 99 ? '99+' : '$unread',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            )
+          : FloatingActionButton(
+              backgroundColor: const Color(0xFF8B5E6B),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CustomerChatPage(
+                      adminId: '0efef310-8e42-4f73-94b4-e7c90dc8acb6',
+                      adminName: 'Admin',
+                    ),
+                  ),
+                );
+              },
+              child: const Icon(Icons.chat_bubble, color: Colors.white),
+            ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         backgroundColor: Colors.white,

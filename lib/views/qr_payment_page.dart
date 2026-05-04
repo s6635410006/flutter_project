@@ -185,9 +185,40 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
 
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('กรุณาเข้าสู่ระบบ')),
+          );
+        }
+        return;
+      }
+
       final addr = widget.address;
       final addressText =
           "${addr['name']} โทร: ${addr['phone']}\n${addr['address']} จ.${addr['province']} ${addr['postalcode']}";
+
+      String productNames = widget.cartItems.map((item) => item.name).join(', ');
+      if (widget.customOrders.isNotEmpty) {
+        final customNames = widget.customOrders
+            .map((e) => 'Custom Cake #${e['id']}')
+            .join(', ');
+        productNames = productNames.isNotEmpty
+            ? '$productNames, $customNames'
+            : customNames;
+      }
+
+      final orderAddress =
+          '${addr['address']} ${addr['province']}\nชื่อผู้รับ: ${addr['name']} โทร: ${addr['phone']}';
+
+      await Supabase.instance.client.from('orders').insert({
+        'user_id': userId,
+        'status': 'กำลังเตรียม',
+        'address': orderAddress,
+        'items': productNames,
+        'total_price': widget.totalAmount,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
 
       final itemsText = [
         ...widget.cartItems.map((item) => "${item.name} x${item.quantity}"),
@@ -215,6 +246,13 @@ class _QrPaymentPageState extends State<QrPaymentPage> {
         'item': itemsText,
         'totalprice': widget.totalAmount,
       });
+
+      for (final customReq in widget.customOrders) {
+        await Supabase.instance.client
+            .from('custom_requests')
+            .update({'status': 'ordered'})
+            .eq('id', customReq['id']);
+      }
 
       if (mounted) {
         _showSuccessDialog();

@@ -67,80 +67,6 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-//-----สร้าง/เพิ่ม order----------
-  Future<void> _createOrder() async {
-    final user = Supabase.instance.client.auth.currentUser;
-
-    // ตรวจสอบเงื่อนไขก่อนสั่งซื้อ
-    if (user == null || _address == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("กรุณาเลือกที่อยู่จัดส่ง")),
-        );
-      }
-      return;
-    }
-
-    String productNames = "";
-    try {
-      productNames = widget.cartItems.map((item) => item.name).join(', ');
-      if (_dbCustomOrders.isNotEmpty) {
-        final customNames = _dbCustomOrders.map((e) => 'Custom Cake #${e['id']}').join(', ');
-        if (productNames.isNotEmpty) {
-          productNames += ', $customNames';
-        } else {
-          productNames = customNames;
-        }
-      }
-    } catch (e) {
-      return;
-    }
-
-    try {
-
-      // 🚩 ตาราง 'orders' ใช้ 'user_id' (มีขีดล่าง)
-      await Supabase.instance.client.from('orders').insert({
-        'user_id': user.id,
-        'status': 'กำลังเตรียม',
-        'address':
-            '${_address!['address']} ${_address!['province']}\nชื่อผู้รับ: ${_address!['name']} โทร: ${_address!['phone']}',
-        'items': productNames,
-        'total_price': _total,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-
-
-
-      // 🚩 ตาราง 'carts' ใช้ 'userid' (ไม่มีขีดล่าง) ตามที่ Supabase แนะนำ
-      await Supabase.instance.client
-          .from('carts')
-          .update({'status': 'ordered'}).eq('userid', user.id);
-
-      // อัปเดต custom_requests ด้วย
-      for (var customReq in _dbCustomOrders) {
-        await Supabase.instance.client
-            .from('custom_requests')
-            .update({'status': 'ordered'})
-            .eq('id', customReq['id']);
-      }
-
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("สั่งซื้อสำเร็จแล้ว!")),
-        );
-
-        // 🚩 ตรงนี้คุณประชาอาจจะใส่ Navigator.pop(context) หรือไปหน้าประวัติสั่งซื้อได้เลย
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("เกิดข้อผิดพลาด: $e")),
-        );
-      }
-    }
-  }
-
   Future<void> _fetchAddress() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
@@ -478,9 +404,7 @@ class _CartPageState extends State<CartPage> {
                           return;
                         }
 
-                        await _createOrder();
-
-                        // 3. บันทึกสำเร็จแล้วพาไปหน้าชำระเงิน
+                        // บันทึก orders / carts / สถานะ custom หลังชำระเงินสำเร็จที่ QrPaymentPage
                         if (mounted) {
                           Navigator.push(
                             context,

@@ -44,6 +44,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         'content': '',
         'image_url': url,
         'is_from_admin': false,
+        'is_read': false,
         'created_at': DateTime.now().toIso8601String(),
       });
       _scrollToBottom();
@@ -63,6 +64,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         'receiver_id': widget.adminId,
         'content': text,
         'is_from_admin': false,
+        'is_read': false,
         'created_at': DateTime.now().toIso8601String(),
       });
       _messageController.clear();

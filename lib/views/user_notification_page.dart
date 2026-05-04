@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project/views/home_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserNotificationPage extends StatefulWidget {
@@ -17,13 +18,26 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
         'status': newStatus,
       }).eq('id', id);
 
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(newStatus == 'confirmed' ? 'ยืนยันออเดอร์แล้ว สินค้าถูกเพิ่มลงตะกร้า' : 'ยกเลิกออเดอร์แล้ว')),
       );
+
+      if (newStatus == 'confirmed' && mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const HomeUi(initialTabIndex: 2),
+          ),
+          (route) => false,
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 

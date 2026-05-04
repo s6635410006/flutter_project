@@ -53,6 +53,7 @@ class _AdminChatPageState extends State<AdminChatPage> {
         'content': 'ส่งรูปภาพ',
         'image_url': url,
         'is_from_admin': true,
+        'is_read': false,
         'created_at': DateTime.now().toIso8601String(),
       }).select();
     } catch (e) {
@@ -72,8 +73,31 @@ class _AdminChatPageState extends State<AdminChatPage> {
       'created_at': DateTime.now().toIso8601String(),
       'content': txt,
       'is_from_admin': true,
+      'is_read': false,
     });
     _msgController.clear();
+  }
+
+  Future<void> _markCustomerMessagesRead() async {
+    try {
+      final myId = supabase.auth.currentUser?.id;
+      if (myId == null) return;
+
+      await supabase
+          .from('messages')
+          .update({'is_read': true})
+          .eq('sender_id', widget.customerId)
+          .eq('receiver_id', myId)
+          .eq('is_from_admin', false);
+    } catch (_) {
+      // ignore: best-effort
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _markCustomerMessagesRead();
   }
 
   @override
@@ -121,6 +145,11 @@ class _AdminChatPageState extends State<AdminChatPage> {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
+
+        // best-effort: mark incoming messages as read while viewing chat
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _markCustomerMessagesRead();
+        });
 
         final myId = supabase.auth.currentUser!.id;
         final customerId = widget.customerId;

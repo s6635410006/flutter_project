@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_project/views/notification_center_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomePage extends StatefulWidget {
@@ -21,6 +22,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // เก็บ ID ของการ์ดที่ถูกกด favorite
   final Set<dynamic> _favoriteIds = {};
+
+  final _supabase = Supabase.instance.client;
 
   List<_CategoryItem> _categories = [];
   List<_CakeItem> _cakes = [];
@@ -54,10 +57,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _fetchData() async {
     try {
-      final supabase = Supabase.instance.client;
-      
-      final categoryData = await supabase.from('categories').select();
-      final productData = await supabase.from('products').select();
+      final categoryData = await _supabase.from('categories').select();
+      final productData = await _supabase.from('products').select();
       
       if (mounted) {
         setState(() {
@@ -125,10 +126,14 @@ class _HomePageState extends State<HomePage> {
         centerTitle: false,
         leading: Icon(Icons.menu, color: const Color(0xFF6F4E5C)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_bag_outlined),
+          _NotificationBell(
+            supabase: _supabase,
             color: const Color(0xFF6F4E5C),
-            onPressed: widget.onOpenCart,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationCenterPage()),
+              );
+            },
           ),
         ],
       ),
@@ -377,6 +382,81 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     ));
+  }
+}
+
+class _NotificationBell extends StatelessWidget {
+  const _NotificationBell({
+    required this.supabase,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final SupabaseClient supabase;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = supabase.auth.currentUser;
+
+    if (user == null) {
+      return IconButton(
+        icon: const Icon(Icons.notifications_none_outlined),
+        color: color,
+        onPressed: onPressed,
+      );
+    }
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: supabase
+          .from('custom_requests')
+          .stream(primaryKey: ['id'])
+          .eq('userid', user.id)
+          .order('created_at', ascending: false),
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? const <Map<String, dynamic>>[];
+        final unreadCount =
+            data.where((r) => r['status']?.toString() == 'price_quoted').length;
+
+        return IconButton(
+          onPressed: onPressed,
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(Icons.notifications_none_outlined, color: color),
+              if (unreadCount > 0)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : '$unreadCount',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
