@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_project/views/favorites_page.dart';
 import 'package:flutter_project/views/notification_center_page.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -46,6 +47,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _fetchData();
+    _loadFavorites();
     _bannerController = PageController();
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!_bannerController.hasClients) return;
@@ -80,6 +82,62 @@ class _HomePageState extends State<HomePage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadFavorites() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    try {
+      final rows = await _supabase
+          .from('favorites')
+          .select('productid')
+          .eq('userid', user.id);
+      final ids = (rows as List)
+          .map((e) => (e as Map<String, dynamic>)['productid'])
+          .where((id) => id != null)
+          .toSet();
+      if (!mounted) return;
+      setState(() {
+        _favoriteIds
+          ..clear()
+          ..addAll(ids);
+      });
+    } catch (_) {
+      // best-effort: if table doesn't exist, favorites still work locally
+    }
+  }
+
+  Future<void> _toggleFavorite(_CakeItem cake) async {
+    final user = _supabase.auth.currentUser;
+    final wasFavorite = _favoriteIds.contains(cake.id);
+
+    setState(() {
+      if (wasFavorite) {
+        _favoriteIds.remove(cake.id);
+      } else {
+        _favoriteIds.add(cake.id);
+      }
+    });
+
+    if (user == null) return;
+
+    try {
+      if (wasFavorite) {
+        await _supabase
+            .from('favorites')
+            .delete()
+            .eq('userid', user.id)
+            .eq('productid', cake.id);
+      } else {
+        await _supabase.from('favorites').upsert({
+          'userid': user.id,
+          'productid': cake.id,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (_) {
+      // best-effort: keep local state even if backend fails
     }
   }
 
@@ -140,6 +198,20 @@ class _HomePageState extends State<HomePage> {
         centerTitle: false,
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.favorite_outline),
+            color: const Color(0xFF6F4E5C),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FavoritesPage(
+                    onOrderCake: widget.onOrderCake,
+                    onOpenCart: widget.onOpenCart,
+                  ),
+                ),
+              );
+            },
+          ),
           _NotificationBell(
             supabase: _supabase,
             color: const Color(0xFF6F4E5C),
@@ -396,13 +468,7 @@ class _HomePageState extends State<HomePage> {
                             widget.onOpenCart();
                           },
                           onFavoriteTap: () {
-                            setState(() {
-                              if (isFavorite) {
-                                _favoriteIds.remove(cake.id);
-                              } else {
-                                _favoriteIds.add(cake.id);
-                              }
-                            });
+                            _toggleFavorite(cake);
                           },
                         );
                       },
