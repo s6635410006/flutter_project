@@ -64,13 +64,26 @@ class AdminInboxPage extends StatelessWidget {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
           final messages = snapshot.data!;
+          final myId = supabase.auth.currentUser?.id ?? '';
           final Map<String, Map<String, dynamic>> customers = {};
+          final Map<String, int> unreadByCustomer = {};
 
           for (var m in messages) {
             bool isFromAdmin = m['is_from_admin'] ?? false;
             String cId = isFromAdmin ? (m['receiver_id'] ?? '') : (m['sender_id'] ?? '');
             if (cId.isNotEmpty && !customers.containsKey(cId)) {
               customers[cId] = m;
+            }
+
+            // count unread incoming messages (customer -> admin)
+            if (myId.isNotEmpty &&
+                (m['receiver_id']?.toString() ?? '') == myId &&
+                (m['is_from_admin'] ?? false) == false &&
+                (m['is_read'] == true ? false : true)) {
+              final cid = m['sender_id']?.toString() ?? '';
+              if (cid.isNotEmpty) {
+                unreadByCustomer[cid] = (unreadByCustomer[cid] ?? 0) + 1;
+              }
             }
           }
 
@@ -93,6 +106,7 @@ class AdminInboxPage extends StatelessWidget {
                 builder: (context, infoSnapshot) {
                   final profile = infoSnapshot.data?[0] ?? {'username': 'กำลังโหลด...', 'avatar_url': null};
                   final orderRef = infoSnapshot.data?[1] ?? 'กำลังโหลดออเดอร์...';
+                  final unread = unreadByCustomer[cId] ?? 0;
 
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -130,7 +144,33 @@ class AdminInboxPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (unread > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                unread > 99 ? '99+' : '$unread',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  height: 1.0,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.chevron_right, color: Colors.grey),
+                        ],
+                      ),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(

@@ -24,6 +24,28 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
 
+  Future<void> _markAdminMessagesRead() async {
+    try {
+      final myId = _supabase.auth.currentUser?.id;
+      if (myId == null) return;
+
+      await _supabase
+          .from('messages')
+          .update({'is_read': true})
+          .eq('sender_id', widget.adminId)
+          .eq('receiver_id', myId)
+          .eq('is_from_admin', true);
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _markAdminMessagesRead();
+  }
+
   Future<void> _sendImage() async {
     final XFile? image = await ImagePicker()
         .pickImage(source: ImageSource.gallery, imageQuality: 70);
@@ -131,6 +153,10 @@ Widget _buildMessageList() {
             (s == widget.adminId && r == myId);
       }).toList();
 
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _markAdminMessagesRead();
+      });
+
       // 🔥 ทำ scroll หลัง render เสร็จ
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
@@ -165,6 +191,9 @@ Widget _buildMessageList() {
         ? DateFormat('HH:mm')
             .format(DateTime.parse(msg['created_at']).toLocal())
         : '';
+
+    final isRead = msg['is_read'] == true;
+    final showRead = isMe && isRead;
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 5),
@@ -243,9 +272,21 @@ Widget _buildMessageList() {
           // ⏰ เวลา
           Padding(
             padding: EdgeInsets.only(top: 2, left: 6, right: 6),
-            child: Text(
-              time,
-              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showRead) ...[
+                  Text(
+                    'อ่านแล้ว',
+                    style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  time,
+                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                ),
+              ],
             ),
           ),
         ],

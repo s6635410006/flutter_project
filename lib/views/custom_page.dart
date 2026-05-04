@@ -159,38 +159,7 @@ class _CustomPageState extends State<CustomPage> {
     });
   }
 
-  Future<void> _saveCustomOrder() async {
-    if (widget.onAddCustomOrder != null) {
-      widget.onAddCustomOrder!({
-        'size': sizes[selectedSize],
-        'flavor': flavors[selectedFlavor],
-        'color_index': selectedColor,
-        'color_name': colorNames[selectedColor],
-        'message': messageCtrl.text,
-        'is_fruit': isFruit,
-        'is_chocolate': isChocolate,
-        'price': calculatePrice(),
-        'id': DateTime.now().millisecondsSinceEpoch,
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('เพิ่มลงตะกร้าเรียบร้อยแล้ว')),
-      );
-
-      setState(() {
-        selectedSize = 0;
-        selectedFlavor = 1;
-        selectedColor = 0;
-        isChocolate = true;
-        isFruit = false;
-        messageCtrl.clear();
-      });
-
-      if (widget.onOpenCart != null) {
-        widget.onOpenCart!();
-      }
-    }
-  }
+  // ส่งให้แอดมินประเมินราคาแทน (ไม่เพิ่มลงตะกร้าในหน้านี้)
 
   @override
   Widget build(BuildContext context) {

@@ -19,8 +19,33 @@ class HomeUi extends StatefulWidget {
 
 class _HomeUiState extends State<HomeUi> {
   bool _isAdmin = false;
+  String? _adminId;
   late int currentIndex;
   final List<CartItemData> _cartItems = [];
+
+  Future<void> _loadAdminId() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final rows = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin')
+          .limit(1);
+
+      final first = (rows as List).isEmpty ? null : (rows as List).first;
+      final id = (first is Map) ? first['id']?.toString() : null;
+      if (!mounted) return;
+      setState(() {
+        _adminId = (id != null && id.isNotEmpty) ? id : null;
+      });
+    } catch (e) {
+      debugPrint('Error loading admin id: $e');
+      if (!mounted) return;
+      setState(() {
+        _adminId = null;
+      });
+    }
+  }
 
   Future<void> _checkUserRole() async {
     final supabase = Supabase.instance.client;
@@ -35,17 +60,11 @@ class _HomeUiState extends State<HomeUi> {
             .eq('id', user.id)
             .single();
 
-        if (data['role'] == 'admin') {
-          setState(() {
-            _isAdmin = true;
-          });
-        } else {
-          setState(() {
-            _isAdmin = false;
-          });
-        }
+        final role = data['role']?.toString().toLowerCase();
+        setState(() => _isAdmin = role == 'admin');
       } catch (e) {
         debugPrint("Error fetching role: $e");
+        if (mounted) setState(() => _isAdmin = false);
       }
     }
   }
@@ -55,6 +74,7 @@ class _HomeUiState extends State<HomeUi> {
     super.initState();
     currentIndex = widget.initialTabIndex.clamp(0, 3);
     _checkUserRole(); // 🚩 สั่งให้เช็กทันทีที่หน้าจอโหลดเสร็จ
+    _loadAdminId();
   }
 
   void _openCartTab() {
@@ -164,11 +184,20 @@ class _HomeUiState extends State<HomeUi> {
           : FloatingActionButton(
               backgroundColor: const Color(0xFF8B5E6B),
               onPressed: () {
+                final adminId = _adminId;
+                if (adminId == null || adminId.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('ยังไม่พบแอดมินในระบบ (profiles.role=admin)'),
+                    ),
+                  );
+                  return;
+                }
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => CustomerChatPage(
-                      adminId: '0efef310-8e42-4f73-94b4-e7c90dc8acb6',
+                      adminId: adminId,
                       adminName: 'Admin',
                     ),
                   ),

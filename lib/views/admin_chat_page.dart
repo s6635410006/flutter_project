@@ -291,12 +291,27 @@ class _AdminChatPageState extends State<AdminChatPage> {
                 // ⏰ เวลา (อยู่นอก bubble)
                 Padding(
                   padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
-                  child: Text(
-                    time,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[500],
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isMe && message['is_read'] == true) ...[
+                        Text(
+                          'อ่านแล้ว',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Text(
+                        time,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
