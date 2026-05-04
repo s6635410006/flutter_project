@@ -23,6 +23,35 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   final _supabase = Supabase.instance.client;
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  late final String _myId;
+  String? _myAvatarUrl;
+  String? _adminAvatarUrl;
+
+  Future<String?> _getAvatarUrl(String userId) async {
+    try {
+      final row = await _supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', userId)
+          .maybeSingle();
+      final url = row?['avatar_url']?.toString();
+      return (url == null || url.isEmpty) ? null : url;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadAvatars() async {
+    final results = await Future.wait<String?>([
+      _getAvatarUrl(_myId),
+      _getAvatarUrl(widget.adminId),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _myAvatarUrl = results[0];
+      _adminAvatarUrl = results[1];
+    });
+  }
 
   Future<void> _markAdminMessagesRead() async {
     try {
@@ -43,7 +72,9 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
   @override
   void initState() {
     super.initState();
+    _myId = _supabase.auth.currentUser!.id;
     _markAdminMessagesRead();
+    _loadAvatars();
   }
 
   Future<void> _sendImage() async {
@@ -114,6 +145,10 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 250, 250, 250),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF6D4C41)),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(widget.adminName, style: TextStyle(fontSize: 18)),
         centerTitle: true,
         backgroundColor: Color.fromARGB(255, 226, 206, 223),
@@ -143,14 +178,12 @@ Widget _buildMessageList() {
         return const Center(child: CircularProgressIndicator());
       }
 
-      final myId = _supabase.auth.currentUser!.id;
-
       final msgs = snapshot.data!.where((m) {
         final s = m['sender_id'];
         final r = m['receiver_id'];
 
-        return (s == myId && r == widget.adminId) ||
-            (s == widget.adminId && r == myId);
+        return (s == _myId && r == widget.adminId) ||
+            (s == widget.adminId && r == _myId);
       }).toList();
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -174,7 +207,7 @@ Widget _buildMessageList() {
         itemCount: msgs.length,
         itemBuilder: (context, index) {
           final msg = msgs[index];
-          final isMe = msg['sender_id'] == myId;
+          final isMe = msg['sender_id'] == _myId;
 
           return _buildChatBubble(msg, isMe);
         },
@@ -206,16 +239,19 @@ Widget _buildMessageList() {
                 isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // 👤 ฝั่งแอดมิน
-              if (!isMe)
-                Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Color(0xFFE6B0D6),
-                    child: Icon(Icons.store, size: 18, color: Colors.white),
-                  ),
+              // 👤 แอดมิน (ซ้าย) แสดงตลอด
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: const Color(0xFFE6B0D6),
+                  backgroundImage:
+                      (_adminAvatarUrl != null) ? NetworkImage(_adminAvatarUrl!) : null,
+                  child: (_adminAvatarUrl == null)
+                      ? const Icon(Icons.store, size: 18, color: Colors.white)
+                      : null,
                 ),
+              ),
 
               Flexible(
                 child: Container(
@@ -246,12 +282,37 @@ Widget _buildMessageList() {
                         : CrossAxisAlignment.start,
                     children: [
                       if (hasImage)
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 5),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(msg['image_url'],
-                                fit: BoxFit.cover),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 231, 145, 206),
+                              width: 5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(
+                                  msg['image_url'],
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'ส่งรูปภาพ',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color.fromARGB(255, 199, 99, 182),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       if ((msg['content'] ?? '').toString().isNotEmpty)
@@ -264,6 +325,21 @@ Widget _buildMessageList() {
                         ),
                     ],
                   ),
+                ),
+              ),
+
+              // 👤 ลูกค้า (ขวา) แสดงตลอด
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: CircleAvatar(
+                  radius: 14,
+                  backgroundColor: const Color(0xFFF5E1F0),
+                  backgroundImage:
+                      (_myAvatarUrl != null) ? NetworkImage(_myAvatarUrl!) : null,
+                  child: (_myAvatarUrl == null)
+                      ? const Icon(Icons.person,
+                          size: 16, color: Color(0xFF6D4C41))
+                      : null,
                 ),
               ),
             ],

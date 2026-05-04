@@ -177,6 +177,7 @@ class AdminInboxPage extends StatelessWidget {
                           builder: (context) => AdminChatPage(
                             customerId: cId,
                             customerName: profile['username'],
+                            customerAvatarUrl: profile['avatar_url']?.toString(),
                           ),
                         ),
                       ),

@@ -26,6 +26,46 @@ class _AdminChatPageState extends State<AdminChatPage> {
   final TextEditingController _msgController = TextEditingController();
   bool _isUploading = false;
   final ScrollController _scrollController = ScrollController();
+  late final String _myId;
+  String? _myAvatarUrl;
+  String? _customerAvatarUrl;
+
+  Future<void> _loadMyAvatar() async {
+    try {
+      final row = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', _myId)
+          .maybeSingle();
+      final url = row?['avatar_url']?.toString();
+      if (!mounted) return;
+      setState(() => _myAvatarUrl = (url == null || url.isEmpty) ? null : url);
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  Future<void> _loadCustomerAvatarIfNeeded() async {
+    if (widget.customerAvatarUrl != null &&
+        widget.customerAvatarUrl!.trim().isNotEmpty) {
+      _customerAvatarUrl = widget.customerAvatarUrl!.trim();
+      return;
+    }
+    try {
+      final row = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', widget.customerId)
+          .maybeSingle();
+      final url = row?['avatar_url']?.toString();
+      if (!mounted) return;
+      setState(() {
+        _customerAvatarUrl = (url == null || url.isEmpty) ? null : url;
+      });
+    } catch (_) {
+      // best-effort
+    }
+  }
 
   // ----------- ส่งรูปภาพ -----------
   Future<void> _sendImage() async {
@@ -97,7 +137,10 @@ class _AdminChatPageState extends State<AdminChatPage> {
   @override
   void initState() {
     super.initState();
+    _myId = supabase.auth.currentUser!.id;
     _markCustomerMessagesRead();
+    _loadMyAvatar();
+    _loadCustomerAvatarIfNeeded();
   }
 
   @override
@@ -151,15 +194,12 @@ class _AdminChatPageState extends State<AdminChatPage> {
           _markCustomerMessagesRead();
         });
 
-        final myId = supabase.auth.currentUser!.id;
         final customerId = widget.customerId;
-
         final msgs = snapshot.data!.where((m) {
           final s = m['sender_id'];
           final r = m['receiver_id'];
-
-          return (s == myId && r == customerId) ||
-              (s == customerId && r == myId);
+          return (s == _myId && r == customerId) ||
+              (s == customerId && r == _myId);
         }).toList();
 
         // 🔥 auto scroll เหมือนฝั่งลูกค้า
@@ -179,7 +219,7 @@ class _AdminChatPageState extends State<AdminChatPage> {
           itemCount: msgs.length,
           itemBuilder: (context, index) {
             final msg = msgs[index];
-            final isMe = msg['sender_id'] == myId;
+            final isMe = msg['sender_id'] == _myId;
 
             return _buildMessageBubble(
               message: msg,
@@ -217,12 +257,11 @@ class _AdminChatPageState extends State<AdminChatPage> {
               child: CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFF5E1F0),
-                backgroundImage: (widget.customerAvatarUrl != null &&
-                        widget.customerAvatarUrl!.isNotEmpty)
-                    ? NetworkImage(widget.customerAvatarUrl!)
+                backgroundImage:
+                    (_customerAvatarUrl != null && _customerAvatarUrl!.isNotEmpty)
+                        ? NetworkImage(_customerAvatarUrl!)
                     : null,
-                child: (widget.customerAvatarUrl == null ||
-                        widget.customerAvatarUrl!.isEmpty)
+                child: (_customerAvatarUrl == null || _customerAvatarUrl!.isEmpty)
                     ? const Icon(Icons.person,
                         size: 18, color: Color(0xFF6D4C41))
                     : null,
@@ -267,11 +306,34 @@ class _AdminChatPageState extends State<AdminChatPage> {
                       // 🖼 image
                       if (message['image_url'] != null &&
                           message['image_url'].toString().isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(message['image_url']),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 231, 145, 206),
+                              width: 5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(message['image_url']),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'ส่งรูปภาพ',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color.fromARGB(255, 199, 99, 182),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 
@@ -317,6 +379,22 @@ class _AdminChatPageState extends State<AdminChatPage> {
               ],
             ),
           ),
+
+          // 👤 avatar (ฝั่งขวา) ตอนแอดมินส่ง
+          if (isMe)
+            Padding(
+              padding: const EdgeInsets.only(left: 8, bottom: 2),
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: const Color(0xFFF5E1F0),
+                backgroundImage:
+                    (_myAvatarUrl != null) ? NetworkImage(_myAvatarUrl!) : null,
+                child: (_myAvatarUrl == null)
+                    ? const Icon(Icons.person,
+                        size: 16, color: Color(0xFF6D4C41))
+                    : null,
+              ),
+            ),
         ],
       ),
     );
