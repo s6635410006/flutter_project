@@ -184,7 +184,7 @@ class _CustomPageState extends State<CustomPage> {
           style: TextStyle(color: Colors.brown),
         ),
         centerTitle: true,
-        leading: Icon(Icons.menu, color: Colors.brown),
+        automaticallyImplyLeading: false,
         actions: [
           Icon(Icons.shopping_bag, color: Colors.brown),
           SizedBox(width: 10),

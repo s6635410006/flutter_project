@@ -12,6 +12,33 @@ class _AdminCustomRequestsPageState extends State<AdminCustomRequestsPage> {
   final supabase = Supabase.instance.client;
   // Map to store controllers for each request
   final Map<String, TextEditingController> _priceControllers = {};
+  
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '-' : value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _submitPrice(String id, String priceText) async {
     final price = int.tryParse(priceText);
@@ -88,15 +115,20 @@ class _AdminCustomRequestsPageState extends State<AdminCustomRequestsPage> {
                     children: [
                       Text("Request #${req['id']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const Divider(),
-                      Text("ขนาด: ${req['size']}"),
-                      Text("รสชาติ: ${req['flavor']}"),
-                      Text("สี: ${req['colorname']}"),
-                      if (req['personalmessage'] != null && req['personalmessage'].toString().isNotEmpty)
-                        Text("ข้อความ: ${req['personalmessage']}"),
-                      if (req['customdescription'] != null && req['customdescription'].toString().isNotEmpty)
-                        Text("รายละเอียด: ${req['customdescription']}", style: const TextStyle(color: Colors.brown)),
+                      _detailRow("ขนาด", (req['size'] ?? '').toString()),
+                      _detailRow("รสชาติ", (req['flavor'] ?? '').toString()),
+                      _detailRow("สี", (req['colorname'] ?? '').toString()),
+                      _detailRow("ท็อปปิ้ง", () {
+                        final parts = <String>[];
+                        if (req['isfruit'] == true) parts.add('Fruit (+฿20)');
+                        if (req['ischocolate'] == true) parts.add('Chocolate (+฿30)');
+                        return parts.isEmpty ? 'ไม่เพิ่มท็อปปิ้ง' : parts.join(', ');
+                      }()),
+                      _detailRow("ข้อความบนเค้ก", (req['personalmessage'] ?? '').toString()),
+                      _detailRow("ดีไซน์/รายละเอียด", (req['customdescription'] ?? '').toString()),
                       
-                      if (req['referenceimageurl'] != null)
+                      if (req['referenceimageurl'] != null &&
+                          req['referenceimageurl'].toString().isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 10),
                           child: ClipRRect(

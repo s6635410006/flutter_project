@@ -185,7 +185,7 @@ class _ProfilePageState extends State<ProfilePage> {
         elevation: 0,
         title: const Text('Cake Ease', style: TextStyle(color: Colors.brown)),
         centerTitle: true,
-        leading: const Icon(Icons.menu, color: Colors.brown),
+        automaticallyImplyLeading: false,
         actions: const [
           Icon(Icons.shopping_bag, color: Colors.brown),
           SizedBox(width: 10),

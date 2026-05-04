@@ -29,6 +29,8 @@ class _HomePageState extends State<HomePage> {
   List<_CakeItem> _cakes = [];
   bool _isLoading = true;
   dynamic _selectedCategoryId;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   final List<String> _bannerImages = const [
     'assets/images/c1.jpg',
@@ -84,14 +86,25 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _bannerTimer?.cancel();
     _bannerController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayedCakes = _selectedCategoryId == null 
-        ? _cakes 
-        : _cakes.where((cake) => cake.categoryId?.toString() == _selectedCategoryId?.toString()).toList();
+    final q = _searchQuery.trim().toLowerCase();
+    final displayedCakes = (_selectedCategoryId == null
+            ? _cakes
+            : _cakes
+                .where((cake) =>
+                    cake.categoryId?.toString() ==
+                    _selectedCategoryId?.toString())
+                .toList())
+        .where((cake) {
+          if (q.isEmpty) return true;
+          return cake.name.toLowerCase().contains(q);
+        })
+        .toList();
 
     final selectedCategoryName = _categories
         .where((c) => c.id?.toString() == _selectedCategoryId?.toString())
@@ -124,7 +137,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         centerTitle: false,
-        leading: Icon(Icons.menu, color: const Color(0xFF6F4E5C)),
+        automaticallyImplyLeading: false,
         actions: [
           _NotificationBell(
             supabase: _supabase,
@@ -152,6 +165,11 @@ class _HomePageState extends State<HomePage> {
                   borderRadius: BorderRadius.circular(28),
                 ),
                 child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (val) {
+                    setState(() => _searchQuery = val);
+                  },
                   decoration: InputDecoration(
                     hintText: 'ค้นหาเค้กที่ท่านต้องการ...',
                     hintStyle: TextStyle(
@@ -159,6 +177,17 @@ class _HomePageState extends State<HomePage> {
                       fontSize: 13,
                     ),
                     prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                    suffixIcon: _searchQuery.trim().isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(Icons.close,
+                                color: Colors.grey.shade600),
+                            onPressed: () {
+                              _searchController.clear();
+                              FocusScope.of(context).unfocus();
+                              setState(() => _searchQuery = '');
+                            },
+                          ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),

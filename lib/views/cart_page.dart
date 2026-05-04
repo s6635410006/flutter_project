@@ -130,7 +130,7 @@ class _CartPageState extends State<CartPage> {
           "CAKE EASE",
           style: TextStyle(color: Colors.brown),
         ),
-        leading: const Icon(Icons.menu, color: Colors.brown),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.shopping_bag, color: Colors.brown),
